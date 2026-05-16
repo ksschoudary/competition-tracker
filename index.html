@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CompTrack">
+<meta name="theme-color" content="#080d14">
+<title>Competition Tracker</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.svg">
+<link rel="icon" href="icon-192.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#080d14;--bg1:#0e1520;--bg2:#141d2b;--bg3:#1a2436;--bg4:#202e42;
+  --cyan:#00d4c8;--cyan-dim:rgba(0,212,200,0.14);
+  --text:#e8edf5;--text2:#8a97ab;--text3:#4d5d70;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.11);
+  --red:#ff4d6d;--green:#00c47a;--amber:#f5a623;--purple:#a78bfa;
+  --radius:16px;--radius-sm:11px;--radius-xs:8px;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+#app{height:100%;display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:relative;overflow:hidden}
+/* NAV */
+#nav{display:flex;background:var(--bg1);border-top:1px solid var(--border);padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px));z-index:100;flex-shrink:0}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0 4px;cursor:pointer;position:relative;user-select:none}
+.nav-btn svg{width:22px;height:22px;stroke:var(--text3);stroke-width:1.6;fill:none;transition:stroke .2s}
+.nav-btn span{font-size:11px;color:var(--text3);letter-spacing:.02em;font-weight:500;transition:color .2s}
+.nav-btn.active svg{stroke:var(--cyan)}
+.nav-btn.active span{color:var(--cyan)}
+.nav-btn.active::after{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:28px;height:2px;background:var(--cyan);border-radius:0 0 3px 3px}
+/* SCREENS */
+#screens{flex:1;overflow:hidden;position:relative}
+.screen{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;opacity:0;pointer-events:none;transition:opacity .22s ease;-webkit-overflow-scrolling:touch}
+.screen.active{opacity:1;pointer-events:all}
+.screen::-webkit-scrollbar{display:none}
+/* PAGE HEADER */
+.page-header{padding:calc(44px + env(safe-area-inset-top,0px)) 22px 14px;background:var(--bg);position:sticky;top:0;z-index:10}
+.page-title{font-size:26px;font-weight:600;letter-spacing:-.03em;color:var(--text)}
+.page-sub{font-size:12px;color:var(--text3);margin-top:3px}
+/* FILTER BAR */
+.filter-bar{padding:0 22px 14px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.filter-bar::-webkit-scrollbar{display:none}
+.filter-chip{display:flex;align-items:center;gap:5px;padding:7px 13px;border-radius:20px;font-size:12px;font-weight:500;color:var(--text2);background:var(--bg2);border:1px solid var(--border);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .18s;user-select:none}
+.filter-chip svg{width:12px;height:12px;stroke:currentColor;stroke-width:2;fill:none;flex-shrink:0}
+.filter-chip.active{background:var(--cyan-dim);border-color:rgba(0,212,200,0.35);color:var(--cyan)}
+.chip-clear{display:none;width:16px;height:16px;border-radius:50%;background:rgba(0,212,200,0.25);align-items:center;justify-content:center;font-size:10px;color:var(--cyan);flex-shrink:0;cursor:pointer}
+.filter-chip.active .chip-clear{display:flex}
+/* FILTER BOTTOM SHEET */
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;opacity:0;pointer-events:none;transition:opacity .22s}
+.sheet-bg.open{opacity:1;pointer-events:all}
+.sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);width:100%;max-width:480px;background:var(--bg2);border-radius:22px 22px 0 0;z-index:201;transition:transform .28s cubic-bezier(.32,1,.32,1);padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+.sheet.open{transform:translateX(-50%) translateY(0)}
+.sheet-handle{width:36px;height:4px;background:var(--bg4);border-radius:2px;margin:14px auto 18px}
+.sheet-title{font-size:15px;font-weight:600;padding:0 22px 14px;color:var(--text);border-bottom:1px solid var(--border)}
+.sheet-body{padding:16px 22px;max-height:52vh;overflow-y:auto}
+.sheet-label{font-size:10px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;font-weight:500}
+.sheet-opts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.sheet-opt{padding:8px 16px;border-radius:20px;font-size:13px;font-weight:500;color:var(--text2);background:var(--bg3);border:1px solid var(--border);cursor:pointer;transition:all .18s;user-select:none}
+.sheet-opt.sel{background:var(--cyan-dim);border-color:rgba(0,212,200,0.4);color:var(--cyan)}
+.sheet-footer{display:flex;gap:10px;padding:14px 22px 0;border-top:1px solid var(--border)}
+.sheet-btn{flex:1;padding:13px;border-radius:var(--radius-sm);font-size:14px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:opacity .18s}
+.sheet-btn:active{opacity:.75}
+.sheet-btn.sec{background:var(--bg3);color:var(--text2)}
+.sheet-btn.pri{background:var(--cyan);color:#000}
+/* MAP STATS */
+.map-stats{display:flex;gap:8px;padding:0 22px 14px}
+.stat-pill{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 10px;display:flex;flex-direction:column;gap:4px}
+.stat-pill-label{font-size:9px;color:var(--text3);letter-spacing:.1em;font-weight:500;text-transform:uppercase}
+.stat-pill-val{font-size:18px;font-weight:600;color:var(--text);letter-spacing:-.02em;font-family:'DM Mono',monospace}
+.stat-pill-val.cyan{color:var(--cyan)}
+/* MAP */
+.map-wrap{padding:0 12px 8px;position:relative}
+#india-map{width:100%;height:auto;display:block}
+.map-hint{text-align:center;font-size:11px;color:var(--text3);padding:4px 0 10px}
+.map-tip{position:absolute;z-index:50;background:var(--bg2);border:1px solid rgba(0,212,200,0.35);border-radius:var(--radius-sm);padding:12px 14px;min-width:190px;max-width:260px;pointer-events:none;opacity:0;transition:opacity .18s;bottom:24px;left:50%;transform:translateX(-50%)}
+.map-tip.show{opacity:1}
+.map-tip h4{font-size:12px;font-weight:600;color:var(--cyan);margin-bottom:8px}
+.tt-row{display:flex;justify-content:space-between;gap:12px;font-size:12px;margin-top:5px}
+.tt-name{color:var(--text2)}
+.tt-val{color:var(--text);font-weight:500;font-family:'DM Mono',monospace}
+.tt-sep{margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+/* FAB */
+.fab{position:absolute;bottom:20px;right:20px;width:50px;height:50px;background:var(--cyan);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 20px rgba(0,212,200,.25);transition:transform .18s;z-index:20}
+.fab:active{transform:scale(.88)}
+.fab svg{width:22px;height:22px;stroke:#000;stroke-width:2.2;fill:none;stroke-linecap:round}
+@keyframes mpp{0%{r:5;opacity:.6}100%{r:13;opacity:0}}
+.mpr{animation:mpp 1.8s ease-out infinite}
+/* ENTRY */
+.seg-wrap{padding:0 22px 14px}
+.seg{display:flex;background:var(--bg2);border:1px solid var(--border);border-radius:30px;padding:3px}
+.seg-btn{flex:1;padding:8px;border-radius:26px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--text2);transition:all .2s;user-select:none}
+.seg-btn.on{background:var(--cyan);color:#000}
+.entry-form{padding:0 22px}
+.field{margin-bottom:13px}
+.field label{display:block;font-size:10px;color:var(--text3);letter-spacing:.08em;font-weight:500;text-transform:uppercase;margin-bottom:6px}
+.field input,.field select{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-xs);padding:12px 14px;font-size:15px;color:var(--text);font-family:'DM Sans',system-ui,sans-serif;outline:none;transition:border-color .2s;appearance:none;-webkit-appearance:none}
+.field input:focus,.field select:focus{border-color:rgba(0,212,200,.5)}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238a97ab' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+.field input::placeholder{color:var(--text3)}
+.price-wrap{position:relative}
+.price-pfx{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:15px;color:var(--cyan);font-family:'DM Mono',monospace;pointer-events:none}
+.price-wrap input{padding-left:28px}
+.form-row{display:flex;gap:10px;margin-top:6px}
+.btn-save{flex:1;padding:14px;background:var(--cyan);color:#000;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .18s}
+.btn-save:active{opacity:.8}
+.btn-cancel{padding:14px 18px;background:var(--bg3);color:var(--text2);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-weight:500;cursor:pointer;font-family:inherit}
+/* RECORDS */
+.rec-header{display:flex;justify-content:space-between;align-items:center;padding:0 22px 12px}
+.rec-count{font-size:13px;color:var(--text3)}
+.btn-csv{display:flex;align-items:center;gap:5px;background:var(--bg2);border:1px solid var(--border);color:var(--text2);padding:7px 13px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .18s}
+.btn-csv svg{width:13px;height:13px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round}
+.rec-list{padding:0 22px 100px}
+.rec-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:10px;position:relative;overflow:hidden}
+.rec-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--cyan)}
+.rec-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px}
+.rec-comp{font-size:15px;font-weight:600;color:var(--text)}
+.rec-price{font-size:17px;font-weight:600;color:var(--cyan);font-family:'DM Mono',monospace}
+.rec-loc{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:4px}
+.rec-loc svg{width:12px;height:12px;stroke:var(--text3);stroke-width:1.6;fill:none;flex-shrink:0}
+.rec-meta{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.rec-date{font-size:11px;color:var(--text3)}
+.rec-period{font-size:11px;background:var(--bg3);color:var(--text2);padding:2px 9px;border-radius:20px}
+.rec-acts{display:flex;gap:6px;position:absolute;right:12px;bottom:12px}
+.ico-btn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text3);border-radius:6px;transition:all .18s}
+.ico-btn svg{width:14px;height:14px;stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round}
+.ico-btn.edit:active{color:var(--cyan)}
+.ico-btn.del:active{color:var(--red)}
+/* ANALYTICS */
+.an-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 22px 14px}
+.an-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px}
+.an-card-lbl{font-size:9px;color:var(--text3);letter-spacing:.08em;font-weight:500;text-transform:uppercase;margin-bottom:6px}
+.an-card-val{font-size:21px;font-weight:600;letter-spacing:-.02em;font-family:'DM Mono',monospace}
+.an-card-sub{font-size:11px;margin-top:3px;font-weight:500}
+.an-tabs{display:flex;gap:6px;padding:0 22px 14px;overflow-x:auto;scrollbar-width:none}
+.an-tabs::-webkit-scrollbar{display:none}
+.an-tab{padding:7px 13px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);color:var(--text2);white-space:nowrap;transition:all .2s;background:transparent;flex-shrink:0}
+.an-tab.on{background:var(--cyan);color:#000;border-color:var(--cyan)}
+.an-body{padding:0 22px 100px}
+.an-panel{display:none}
+.an-panel.on{display:block}
+.an-lbl{font-size:11px;color:var(--text3);margin-bottom:12px;letter-spacing:.03em}
+/* TABLE */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--radius-sm);border:1px solid var(--border)}
+.sum-tbl{width:100%;border-collapse:collapse;min-width:400px}
+.sum-tbl thead{background:var(--bg3)}
+.sum-tbl th{padding:10px 12px;text-align:left;font-size:9px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;font-weight:500;border-bottom:1px solid var(--border);white-space:nowrap}
+.sum-tbl th.r{text-align:right}
+.sum-tbl td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2);font-size:12px;white-space:nowrap}
+.sum-tbl tr:last-child td{border-bottom:none}
+.td-c{color:var(--text);font-weight:500}
+.td-p{color:var(--cyan);font-family:'DM Mono',monospace;font-weight:500;text-align:right}
+.td-b{display:inline-block;background:var(--bg3);color:var(--text3);padding:2px 8px;border-radius:20px;font-size:10px}
+.tbl-foot{display:flex;justify-content:space-between;padding:10px 12px;background:var(--bg3);border-top:1px solid var(--border);font-size:11px}
+.tbl-foot span{color:var(--text3)}
+.tbl-foot strong{color:var(--cyan);font-family:'DM Mono',monospace;font-weight:500}
+/* BARS */
+.bar-chart{display:flex;flex-direction:column;gap:10px}
+.bar-row{display:flex;align-items:center;gap:10px}
+.bar-lbl{font-size:11px;color:var(--text2);width:100px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{flex:1;height:7px;background:var(--bg3);border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .5s ease}
+.bar-val{font-size:11px;font-family:'DM Mono',monospace;width:54px;text-align:right;flex-shrink:0}
+/* BUBBLE */
+.bub-canvas{position:relative;height:240px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:14px}
+.bubble{position:absolute;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:default}
+.bubble-lbl{font-size:10px;font-weight:600;color:#000;line-height:1.3}
+.bubble-sub{font-size:9px;color:rgba(0,0,0,.55)}
+/* SPARKLINE */
+.spark-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-bottom:14px}
+.spark-hd{font-size:11px;color:var(--text3);margin-bottom:12px}
+.spark-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.spark-lbl{font-size:11px;color:var(--text2);width:80px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spark-line{flex:1;height:28px}
+.spark-line svg{width:100%;height:100%}
+.spark-val{font-size:11px;font-family:'DM Mono',monospace;width:52px;text-align:right;flex-shrink:0}
+/* STATE RADAR */
+.state-list{display:flex;flex-direction:column;gap:8px}
+.state-row{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;display:flex;justify-content:space-between;align-items:center}
+.state-nm{font-size:13px;font-weight:500;color:var(--text)}
+.state-ri{text-align:right}
+.state-avg{font-size:14px;font-weight:600;color:var(--cyan);font-family:'DM Mono',monospace}
+.state-cnt{font-size:10px;color:var(--text3);margin-top:2px}
+/* AN FILTERS */
+.an-frow{display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none}
+.an-frow::-webkit-scrollbar{display:none}
+.an-fsel{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:12px;color:var(--text2);font-family:inherit;outline:none;appearance:none;-webkit-appearance:none;cursor:pointer;flex-shrink:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238a97ab' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:26px}
+/* EMPTY */
+.empty{text-align:center;padding:48px 20px;color:var(--text3);font-size:14px;line-height:1.6}
+.empty svg{display:block;margin:0 auto 14px;stroke:var(--text3);opacity:.3}
+/* TOAST */
+#toast{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%) translateY(8px);background:var(--bg3);border:1px solid var(--cyan);color:var(--text);padding:10px 20px;border-radius:30px;font-size:13px;font-weight:500;z-index:999;opacity:0;transition:all .28s ease;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* CONFIRM */
+.conf-bg{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:300;display:none;align-items:center;justify-content:center;padding:20px}
+.conf-bg.show{display:flex}
+.conf-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:24px 22px;width:100%;max-width:300px;text-align:center}
+.conf-title{font-size:16px;font-weight:600;margin-bottom:8px}
+.conf-msg{font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.5}
+.conf-btns{display:flex;gap:10px}
+.conf-btn{flex:1;padding:12px;border-radius:var(--radius-sm);font-size:14px;font-weight:600;cursor:pointer;border:none;font-family:inherit}
+.conf-btn.cc{background:var(--bg3);color:var(--text2)}
+.conf-btn.cd{background:var(--red);color:#fff}
+.bp{height:24px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="screens">
+
+    <!-- ═══ MAP ═══ -->
+    <div class="screen active" id="map-screen">
+      <div class="page-header">
+        <div class="page-title">Coverage Map</div>
+        <div class="page-sub">Tap state or pin for price details</div>
+      </div>
+      <div class="filter-bar">
+        <div class="filter-chip" id="fc-state" onclick="openSheet('state')">
+          <svg viewBox="0 0 24 24"><polygon points="3 6 21 6 14 14 14 20 10 20 10 14"/></svg>
+          <span id="fc-state-lbl">State</span>
+          <span class="chip-clear" id="fc-state-x">✕</span>
+        </div>
+        <div class="filter-chip" id="fc-comp" onclick="openSheet('comp')">
+          <svg viewBox="0 0 24 24"><polygon points="3 6 21 6 14 14 14 20 10 20 10 14"/></svg>
+          <span id="fc-comp-lbl">Competition</span>
+          <span class="chip-clear" id="fc-comp-x">✕</span>
+        </div>
+        <div class="filter-chip" id="fc-month" onclick="openSheet('month')">
+          <svg viewBox="0 0 24 24"><polygon points="3 6 21 6 14 14 14 20 10 20 10 14"/></svg>
+          <span id="fc-month-lbl">Month</span>
+          <span class="chip-clear" id="fc-month-x">✕</span>
+        </div>
+      </div>
+      <div class="map-stats">
+        <div class="stat-pill"><span class="stat-pill-label">Entries</span><span class="stat-pill-val cyan" id="s-ent">0</span></div>
+        <div class="stat-pill"><span class="stat-pill-label">States</span><span class="stat-pill-val" id="s-st">0</span></div>
+        <div class="stat-pill"><span class="stat-pill-label">Avg Price</span><span class="stat-pill-val" id="s-avg">—</span></div>
+      </div>
+      <div class="map-wrap">
+        <svg id="india-map" viewBox="0 0 550 620" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="map-tip" id="map-tip"></div>
+      </div>
+      <div class="map-hint">Tap highlighted states for price details</div>
+      <div class="fab" id="fab">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </div>
+    </div>
+
+    <!-- ═══ ENTRY ═══ -->
+    <div class="screen" id="entry-screen">
+      <div class="page-header"><div class="page-title" id="entry-title">Data Entry</div></div>
+      <div class="seg-wrap">
+        <div class="seg">
+          <div class="seg-btn on" id="seg-add" onclick="switchTab('add')">Add New</div>
+          <div class="seg-btn" id="seg-rec" onclick="switchTab('rec')">Records</div>
+        </div>
+      </div>
+      <div id="p-add">
+        <div class="entry-form">
+          <input type="hidden" id="f-eid">
+          <div class="field"><label>Date of Entry</label><input type="date" id="f-date"></div>
+          <div class="field"><label>State</label><select id="f-state"><option value="">Select a state</option></select></div>
+          <div class="field"><label>City</label><input type="text" id="f-city" placeholder="e.g. Mumbai" autocomplete="off"></div>
+          <div class="field"><label>Competition Name</label><input type="text" id="f-comp" placeholder="Competitor Brand" autocomplete="off"></div>
+          <div class="field"><label>Period (Month)</label><input type="text" id="f-period" placeholder="e.g. May 26" autocomplete="off"></div>
+          <div class="field"><label>Price (₹)</label>
+            <div class="price-wrap"><span class="price-pfx">₹</span><input type="number" id="f-price" placeholder="0.00" step="0.01" min="0"></div>
+          </div>
+          <div class="form-row">
+            <button class="btn-cancel" id="btn-cancel" style="display:none" onclick="cancelEdit()">Cancel</button>
+            <button class="btn-save" id="btn-save" onclick="saveEntry()">Save Entry</button>
+          </div>
+          <div class="bp"></div>
+        </div>
+      </div>
+      <div id="p-rec" style="display:none">
+        <div class="rec-header">
+          <span class="rec-count" id="rec-count">0 entries</span>
+          <button class="btn-csv" onclick="exportCSV()">
+            <svg viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+            Export CSV
+          </button>
+        </div>
+        <div class="rec-list" id="rec-list"></div>
+      </div>
+    </div>
+
+    <!-- ═══ ANALYTICS ═══ -->
+    <div class="screen" id="analytics-screen">
+      <div class="page-header"><div class="page-title">Analytics</div></div>
+      <div class="an-stats" id="an-stats"></div>
+      <div class="an-tabs">
+        <div class="an-tab on"  onclick="swAnTab('summary',this)">Summary</div>
+        <div class="an-tab"     onclick="swAnTab('bubble',this)">Bubble Map</div>
+        <div class="an-tab"     onclick="swAnTab('trend',this)">Price Trend</div>
+        <div class="an-tab"     onclick="swAnTab('heat',this)">Heat Map</div>
+        <div class="an-tab"     onclick="swAnTab('comps',this)">Competitors</div>
+        <div class="an-tab"     onclick="swAnTab('states',this)">State Radar</div>
+      </div>
+      <div class="an-body">
+        <div class="an-panel on" id="p-summary"></div>
+        <div class="an-panel"    id="p-bubble"></div>
+        <div class="an-panel"    id="p-trend"></div>
+        <div class="an-panel"    id="p-heat"></div>
+        <div class="an-panel"    id="p-comps"></div>
+        <div class="an-panel"    id="p-states"></div>
+      </div>
+    </div>
+
+  </div><!-- /screens -->
+
+  <nav id="nav">
+    <div class="nav-btn active" onclick="goTo('map')" id="nb-map">
+      <svg viewBox="0 0 24 24"><path d="M12 21C12 21 4 14.5 4 9a8 8 0 0116 0c0 5.5-8 12-8 12z"/><circle cx="12" cy="9" r="2.5"/></svg><span>Map</span>
+    </div>
+    <div class="nav-btn" onclick="goTo('entry')" id="nb-entry">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span>Entry</span>
+    </div>
+    <div class="nav-btn" onclick="goTo('analytics')" id="nb-analytics">
+      <svg viewBox="0 0 24 24"><rect x="3" y="14" width="4" height="7" rx="1"/><rect x="10" y="9" width="4" height="12" rx="1"/><rect x="17" y="4" width="4" height="17" rx="1"/></svg><span>Analytics</span>
+    </div>
+  </nav>
+</div>
+
+<!-- FILTER BOTTOM SHEET -->
+<div class="sheet-bg" id="sheet-bg" onclick="closeSheet()">
+  <div class="sheet" id="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="sheet-title">Filter</div>
+    <div class="sheet-body" id="sheet-body"></div>
+    <div class="sheet-footer">
+      <button class="sheet-btn sec" onclick="clearSheet()">Clear</button>
+      <button class="sheet-btn pri" onclick="applySheet()">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM -->
+<div class="conf-bg" id="conf-bg">
+  <div class="conf-box">
+    <div class="conf-title">Delete Entry?</div>
+    <div class="conf-msg">This will be permanently removed and cannot be undone.</div>
+    <div class="conf-btns">
+      <button class="conf-btn cc" onclick="closeConf()">Cancel</button>
+      <button class="conf-btn cd" onclick="doDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════
+   STATIC DATA
+═══════════════════════════════════════════ */
+const STATES = ["Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Delhi","Jammu & Kashmir","Ladakh"];
+
+const CENTROIDS = {
+  "Andhra Pradesh":{x:295,y:415},"Arunachal Pradesh":{x:458,y:163},"Assam":{x:437,y:207},
+  "Bihar":{x:318,y:252},"Chhattisgarh":{x:298,y:338},"Goa":{x:168,y:425},
+  "Gujarat":{x:118,y:295},"Haryana":{x:218,y:188},"Himachal Pradesh":{x:235,y:130},
+  "Jharkhand":{x:332,y:298},"Karnataka":{x:213,y:452},"Kerala":{x:210,y:530},
+  "Madhya Pradesh":{x:232,y:315},"Maharashtra":{x:195,y:370},"Manipur":{x:468,y:252},
+  "Meghalaya":{x:428,y:237},"Mizoram":{x:455,y:272},"Nagaland":{x:475,y:228},
+  "Odisha":{x:345,y:358},"Punjab":{x:193,y:158},"Rajasthan":{x:168,y:255},
+  "Sikkim":{x:388,y:212},"Tamil Nadu":{x:262,y:498},"Telangana":{x:272,y:390},
+  "Tripura":{x:438,y:265},"Uttar Pradesh":{x:278,y:238},"Uttarakhand":{x:258,y:165},
+  "West Bengal":{x:370,y:280},"Delhi":{x:233,y:202},"Jammu & Kashmir":{x:208,y:82},
+  "Ladakh":{x:255,y:72}
+};
+
+const SVG_PATHS = {
+  "Jammu & Kashmir":"M160,60 L170,50 L190,45 L220,55 L240,60 L255,75 L260,95 L250,110 L230,115 L210,110 L190,100 L175,85 Z",
+  "Ladakh":"M240,60 L278,45 L308,50 L318,68 L298,88 L268,93 L255,88 L250,78 Z",
+  "Himachal Pradesh":"M210,110 L230,115 L250,110 L260,120 L255,135 L240,145 L220,140 L205,130 Z",
+  "Punjab":"M175,130 L205,130 L220,140 L215,165 L195,170 L175,160 L165,145 Z",
+  "Haryana":"M205,160 L215,165 L230,170 L235,195 L215,205 L200,200 L195,185 L200,170 Z",
+  "Delhi":"M228,195 L238,192 L241,206 L231,209 L225,202 Z",
+  "Uttarakhand":"M240,145 L265,140 L280,150 L275,175 L255,180 L235,175 L235,160 Z",
+  "Uttar Pradesh":"M235,175 L280,170 L330,180 L340,215 L320,240 L280,250 L245,245 L230,225 L225,205 L235,195 Z",
+  "Rajasthan":"M115,175 L165,165 L195,170 L200,200 L215,205 L225,225 L210,265 L180,285 L145,285 L115,265 L95,230 L100,200 Z",
+  "Bihar":"M280,215 L330,215 L345,235 L340,265 L315,275 L280,270 L265,250 L270,230 Z",
+  "Sikkim":"M380,195 L395,195 L400,210 L390,220 L378,215 Z",
+  "West Bengal":"M345,240 L380,235 L395,255 L385,300 L360,310 L340,295 L330,275 L335,255 Z",
+  "Arunachal Pradesh":"M420,145 L475,140 L495,160 L485,180 L455,185 L430,180 L415,165 Z",
+  "Nagaland":"M470,185 L490,185 L498,205 L482,218 L464,215 L460,200 Z",
+  "Assam":"M415,185 L455,185 L465,200 L460,225 L435,230 L410,225 L400,210 L408,195 Z",
+  "Meghalaya":"M410,228 L435,230 L440,245 L415,250 L400,240 Z",
+  "Manipur":"M462,220 L482,220 L488,240 L475,258 L458,255 L450,240 Z",
+  "Tripura":"M435,250 L450,248 L455,265 L440,272 L428,262 Z",
+  "Mizoram":"M450,258 L468,258 L472,275 L455,280 L443,270 Z",
+  "Jharkhand":"M315,275 L345,270 L360,290 L355,315 L330,320 L310,310 L305,290 Z",
+  "Odisha":"M330,325 L360,315 L380,335 L375,370 L345,385 L315,375 L305,350 L310,330 Z",
+  "Madhya Pradesh":"M145,285 L210,275 L245,280 L275,300 L280,335 L260,355 L225,360 L185,345 L155,320 L135,300 Z",
+  "Gujarat":"M95,255 L140,255 L155,270 L150,305 L130,320 L100,325 L75,305 L70,280 Z",
+  "Chhattisgarh":"M275,300 L320,300 L335,325 L330,360 L310,375 L280,370 L260,355 L265,320 Z",
+  "Maharashtra":"M130,325 L185,320 L225,330 L240,370 L230,400 L200,415 L160,410 L125,385 L115,355 L120,335 Z",
+  "Goa":"M155,415 L175,410 L180,428 L165,437 L155,428 Z",
+  "Telangana":"M240,360 L280,355 L310,370 L310,400 L285,420 L255,420 L230,405 L230,385 Z",
+  "Andhra Pradesh":"M255,390 L315,375 L350,395 L360,430 L330,455 L285,460 L250,445 L240,420 L248,400 Z",
+  "Karnataka":"M160,415 L200,415 L235,400 L255,420 L250,465 L235,490 L200,505 L165,495 L145,465 L145,440 Z",
+  "Kerala":"M195,505 L225,500 L240,520 L230,555 L205,568 L185,555 L180,530 Z",
+  "Tamil Nadu":"M235,465 L280,460 L310,475 L305,520 L270,548 L235,545 L210,520 L210,495 L230,480 Z"
+};
+
+const PAL = ['#00d4c8','#f5a623','#00c47a','#ff4d6d','#a78bfa','#38bdf8','#fb923c','#34d399','#f472b6','#fbbf24'];
+
+/* ═══════════════════════════════════════════
+   STORAGE
+═══════════════════════════════════════════ */
+const STORE_KEY = 'comptrack_v2';
+let entries = [];
+function loadData() { try { entries = JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch(e){ entries=[]; } }
+function saveData() { localStorage.setItem(STORE_KEY, JSON.stringify(entries)); }
+loadData();
+
+/* ═══════════════════════════════════════════
+   FILTERS  (the fixed part)
+═══════════════════════════════════════════ */
+// Active filters - null means "no filter applied"
+const F = { state: null, comp: null, month: null };
+
+// What the user has tapped in the sheet but not yet applied
+let sheetType = null;
+let sheetPending = null;
+
+function getFiltered() {
+  return entries.filter(e => {
+    if (F.state  !== null && e.state       !== F.state)  return false;
+    if (F.comp   !== null && e.competition !== F.comp)   return false;
+    if (F.month  !== null && e.period      !== F.month)  return false;
+    return true;
+  });
+}
+
+/* Open the bottom sheet for a given filter type */
+function openSheet(type) {
+  sheetType    = type;
+  sheetPending = F[type]; // start with whatever is currently active
+
+  const titles = { state:'Filter by State', comp:'Filter by Competition', month:'Filter by Month' };
+
+  // Build option list from ALL entries so filter always shows all possible values
+  let opts = [];
+  if (type === 'state')  opts = [...new Set(entries.map(e => e.state))].filter(Boolean).sort();
+  if (type === 'comp')   opts = [...new Set(entries.map(e => e.competition))].filter(Boolean).sort();
+  if (type === 'month')  opts = [...new Set(entries.map(e => e.period))].filter(Boolean).sort();
+
+  document.getElementById('sheet-title').textContent = titles[type];
+
+  let html = '<div class="sheet-label">Select one option</div><div class="sheet-opts">';
+  // "All" pill
+  html += `<div class="sheet-opt${sheetPending === null ? ' sel' : ''}" data-v="">All</div>`;
+  // One pill per option
+  opts.forEach(o => {
+    const safe = o.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    html += `<div class="sheet-opt${sheetPending === o ? ' sel' : ''}" data-v="${safe}">${safe}</div>`;
+  });
+  html += '</div>';
+  if (opts.length === 0) {
+    html += '<p style="color:var(--text3);font-size:13px;margin-top:4px">No entries yet — add some data first.</p>';
+  }
+
+  const body = document.getElementById('sheet-body');
+  body.innerHTML = html;
+
+  // Attach click listeners via addEventListener (NOT inline onclick — avoids all escaping issues)
+  body.querySelectorAll('.sheet-opt').forEach(el => {
+    el.addEventListener('click', function() {
+      // Update pending value: empty string means "All" → null
+      sheetPending = this.dataset.v === '' ? null : this.dataset.v;
+      // Update visual selection
+      body.querySelectorAll('.sheet-opt').forEach(o => o.classList.remove('sel'));
+      this.classList.add('sel');
+    });
+  });
+
+  document.getElementById('sheet-bg').classList.add('open');
+  requestAnimationFrame(() => document.getElementById('sheet').classList.add('open'));
+}
+
+/* Close sheet without applying */
+function closeSheet() {
+  document.getElementById('sheet').classList.remove('open');
+  setTimeout(() => document.getElementById('sheet-bg').classList.remove('open'), 270);
+}
+
+/* Apply the pending selection */
+function applySheet() {
+  if (sheetType !== null) {
+    F[sheetType] = sheetPending;
+    refreshChips();
+    renderMap();
+    updateStats();
+  }
+  closeSheet();
+}
+
+/* Clear selection inside sheet (set to All) */
+function clearSheet() {
+  sheetPending = null;
+  const body = document.getElementById('sheet-body');
+  body.querySelectorAll('.sheet-opt').forEach(o => o.classList.remove('sel'));
+  const allPill = body.querySelector('.sheet-opt[data-v=""]');
+  if (allPill) allPill.classList.add('sel');
+}
+
+/* Clear a specific filter directly from the ✕ chip button */
+function clearChip(type, evt) {
+  evt.stopPropagation();
+  F[type] = null;
+  refreshChips();
+  renderMap();
+  updateStats();
+}
+
+/* Update chip appearance to reflect active filters */
+function refreshChips() {
+  const defaults = { state: 'State', comp: 'Competition', month: 'Month' };
+  Object.keys(defaults).forEach(k => {
+    const chip = document.getElementById('fc-' + k);
+    const lbl  = document.getElementById('fc-' + k + '-lbl');
+    if (F[k] !== null) {
+      chip.classList.add('active');
+      lbl.textContent = F[k].length > 16 ? F[k].slice(0, 15) + '…' : F[k];
+    } else {
+      chip.classList.remove('active');
+      lbl.textContent = defaults[k];
+    }
+  });
+}
+
+/* Wire up the ✕ buttons (done once at init, not via onclick attr) */
+function initChipClears() {
+  document.getElementById('fc-state-x').addEventListener('click', e => clearChip('state', e));
+  document.getElementById('fc-comp-x').addEventListener('click',  e => clearChip('comp',  e));
+  document.getElementById('fc-month-x').addEventListener('click', e => clearChip('month', e));
+}
+
+/* ═══════════════════════════════════════════
+   MAP
+═══════════════════════════════════════════ */
+function buildMap() {
+  const svg = document.getElementById('india-map');
+  let h = '<defs></defs>';
+  Object.entries(SVG_PATHS).forEach(([name, d]) => {
+    const id = 'st-' + name.replace(/[\s&]/g, '_');
+    h += `<path id="${id}" d="${d}" fill="#1a2436" stroke="#243040" stroke-width="0.8" data-state="${name.replace(/"/g,'&quot;')}" style="cursor:pointer;transition:fill .3s"/>`;
+  });
+  svg.innerHTML = h;
+  svg.addEventListener('click', onMapClick);
+}
+
+function byState(data) {
+  const m = {};
+  (data || entries).forEach(e => { if (!m[e.state]) m[e.state] = []; m[e.state].push(e); });
+  return m;
+}
+
+function renderMap() {
+  const data = getFiltered();
+  const sm   = byState(data);
+
+  // Reset all state fills
+  document.querySelectorAll('#india-map path').forEach(p => { p.style.fill = '#1a2436'; });
+  // Remove old pins
+  document.querySelectorAll('#india-map .pin').forEach(g => g.remove());
+
+  const svg = document.getElementById('india-map');
+
+  Object.entries(sm).forEach(([state, rows]) => {
+    // Colour the state
+    const el = document.getElementById('st-' + state.replace(/[\s&]/g, '_'));
+    if (el) {
+      const alpha = Math.min(0.25 + (rows.length / 3) * 0.35, 0.65);
+      el.style.fill = `rgba(0,212,200,${alpha})`;
+    }
+    // Add pin
+    const c = CENTROIDS[state];
+    if (!c) return;
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.classList.add('pin');
+    g.style.cursor = 'pointer';
+
+    const pulse = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    pulse.setAttribute('cx', c.x); pulse.setAttribute('cy', c.y);
+    pulse.setAttribute('r', '5'); pulse.setAttribute('fill', 'rgba(0,212,200,0.25)');
+    pulse.classList.add('mpr');
+
+    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot.setAttribute('cx', c.x); dot.setAttribute('cy', c.y);
+    dot.setAttribute('r', '5'); dot.setAttribute('fill', '#00d4c8');
+    dot.setAttribute('stroke', 'rgba(255,255,255,0.9)'); dot.setAttribute('stroke-width', '1.2');
+
+    g.appendChild(pulse); g.appendChild(dot);
+    // Capture rows in closure
+    const capturedRows = rows.slice();
+    g.addEventListener('click', ev => { ev.stopPropagation(); showTip(state, capturedRows); });
+    svg.appendChild(g);
+  });
+}
+
+function onMapClick(e) {
+  const stateName = e.target.getAttribute('data-state');
+  if (!stateName) { hideTip(); return; }
+  const rows = byState(getFiltered())[stateName];
+  if (rows && rows.length) {
+    showTip(stateName, rows);
+  } else {
+    const tip = document.getElementById('map-tip');
+    tip.innerHTML = `<h4>📍 ${stateName}</h4><div style="font-size:12px;color:var(--text3);margin-top:4px">No entries match current filters</div>`;
+    tip.classList.add('show');
+    clearTimeout(window._tipT);
+    window._tipT = setTimeout(hideTip, 2200);
+  }
+}
+
+function showTip(state, rows) {
+  const tip = document.getElementById('map-tip');
+  const avg = rows.reduce((s, r) => s + parseFloat(r.price), 0) / rows.length;
+  const byC = {};
+  rows.forEach(r => { if (!byC[r.competition]) byC[r.competition] = []; byC[r.competition].push(r); });
+  let h = `<h4>📍 ${state}</h4>`;
+  Object.entries(byC).forEach(([comp, rs]) => {
+    const a = rs.reduce((s, r) => s + parseFloat(r.price), 0) / rs.length;
+    h += `<div class="tt-row"><span class="tt-name">${comp}</span><span class="tt-val">₹${a.toFixed(2)}</span></div>`;
+  });
+  h += `<div class="tt-row tt-sep"><span class="tt-name" style="color:var(--text3)">Avg · ${rows.length} entr${rows.length === 1 ? 'y' : 'ies'}</span><span class="tt-val" style="color:var(--cyan)">₹${avg.toFixed(2)}</span></div>`;
+  tip.innerHTML = h;
+  tip.classList.add('show');
+  clearTimeout(window._tipT);
+  window._tipT = setTimeout(hideTip, 4500);
+}
+function hideTip() { document.getElementById('map-tip').classList.remove('show'); }
+
+/* ═══════════════════════════════════════════
+   STATS BAR
+═══════════════════════════════════════════ */
+function updateStats() {
+  const data = getFiltered();
+  const ss   = new Set(data.map(e => e.state));
+  const avg  = data.length ? data.reduce((s, e) => s + parseFloat(e.price), 0) / data.length : 0;
+  document.getElementById('s-ent').textContent = data.length;
+  document.getElementById('s-st').textContent  = ss.size;
+  document.getElementById('s-avg').textContent = data.length ? '₹' + avg.toFixed(2) : '—';
+}
+
+/* ═══════════════════════════════════════════
+   NAVIGATION
+═══════════════════════════════════════════ */
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id + '-screen').classList.add('active');
+  document.getElementById('nb-' + id).classList.add('active');
+  if (id === 'map')       { renderMap(); updateStats(); }
+  if (id === 'analytics') renderAnalytics();
+  if (id === 'entry' && document.getElementById('p-rec').style.display !== 'none') renderRecords();
+}
+
+function switchTab(t) {
+  document.getElementById('seg-add').classList.toggle('on', t === 'add');
+  document.getElementById('seg-rec').classList.toggle('on', t === 'rec');
+  document.getElementById('p-add').style.display = t === 'add' ? 'block' : 'none';
+  document.getElementById('p-rec').style.display  = t === 'rec' ? 'block' : 'none';
+  if (t === 'rec') renderRecords();
+}
+
+/* ═══════════════════════════════════════════
+   ENTRY FORM
+═══════════════════════════════════════════ */
+function initForm() {
+  const sel = document.getElementById('f-state');
+  STATES.forEach(s => { const o = document.createElement('option'); o.value = o.textContent = s; sel.appendChild(o); });
+  document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+  const d = new Date();
+  const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('f-period').value = mo[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2);
+}
+
+function saveEntry() {
+  const eid    = document.getElementById('f-eid').value;
+  const date   = document.getElementById('f-date').value;
+  const state  = document.getElementById('f-state').value;
+  const city   = document.getElementById('f-city').value.trim();
+  const comp   = document.getElementById('f-comp').value.trim();
+  const period = document.getElementById('f-period').value.trim();
+  const price  = parseFloat(document.getElementById('f-price').value);
+  if (!date || !state || !city || !comp || !period || !price || price <= 0) { toast('Please fill all fields'); return; }
+  if (eid) {
+    const idx = entries.findIndex(e => String(e.id) === eid);
+    if (idx > -1) entries[idx] = { ...entries[idx], date, state, city, competition: comp, period, price };
+    toast('Entry updated ✓');
+  } else {
+    entries.push({ id: Date.now(), date, state, city, competition: comp, period, price });
+    toast('Entry saved ✓');
+  }
+  saveData(); updateStats(); clearForm();
+}
+
+function clearForm() {
+  document.getElementById('f-eid').value           = '';
+  document.getElementById('f-city').value          = '';
+  document.getElementById('f-comp').value          = '';
+  document.getElementById('f-price').value         = '';
+  document.getElementById('f-state').value         = '';
+  document.getElementById('btn-cancel').style.display = 'none';
+  document.getElementById('btn-save').textContent  = 'Save Entry';
+  document.getElementById('entry-title').textContent = 'Data Entry';
+  const d = new Date();
+  const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('f-period').value = mo[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2);
+}
+
+function editEntry(id) {
+  const e = entries.find(x => x.id === id);
+  if (!e) return;
+  switchTab('add');
+  document.getElementById('f-eid').value    = e.id;
+  document.getElementById('f-date').value   = e.date;
+  document.getElementById('f-state').value  = e.state;
+  document.getElementById('f-city').value   = e.city;
+  document.getElementById('f-comp').value   = e.competition;
+  document.getElementById('f-period').value = e.period;
+  document.getElementById('f-price').value  = e.price;
+  document.getElementById('btn-cancel').style.display = 'block';
+  document.getElementById('btn-save').textContent     = 'Update Entry';
+  document.getElementById('entry-title').textContent  = 'Edit Entry';
+  document.getElementById('entry-screen').scrollTo({ top: 0, behavior: 'smooth' });
+}
+function cancelEdit() { clearForm(); }
+
+let _delId = null;
+function deleteEntry(id) { _delId = id; document.getElementById('conf-bg').classList.add('show'); }
+function closeConf()     { document.getElementById('conf-bg').classList.remove('show'); _delId = null; }
+function doDelete() {
+  if (_delId) { entries = entries.filter(e => e.id !== _delId); saveData(); updateStats(); renderRecords(); toast('Deleted'); }
+  closeConf();
+}
+
+function renderRecords() {
+  const list = document.getElementById('rec-list');
+  const cnt  = document.getElementById('rec-count');
+  cnt.textContent = entries.length + ' entr' + (entries.length === 1 ? 'y' : 'ies');
+  if (!entries.length) {
+    list.innerHTML = emptyH(); return;
+  }
+  list.innerHTML = [...entries].reverse().map(e => `
+    <div class="rec-card">
+      <div class="rec-top"><span class="rec-comp">${e.competition}</span><span class="rec-price">₹${parseFloat(e.price).toFixed(2)}</span></div>
+      <div class="rec-loc"><svg viewBox="0 0 24 24"><path d="M12 21C12 21 5 14 5 9a7 7 0 0114 0c0 5-7 12-7 12z"/><circle cx="12" cy="9" r="2"/></svg>${e.city}, ${e.state}</div>
+      <div class="rec-meta"><span class="rec-date">${fmtDate(e.date)}</span><span class="rec-period">${e.period}</span></div>
+      <div class="rec-acts">
+        <div class="ico-btn edit" data-id="${e.id}"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+        <div class="ico-btn del" data-id="${e.id}"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></div>
+      </div>
+    </div>`).join('');
+  // Use event delegation for edit/delete - no inline onclick
+  list.querySelectorAll('.ico-btn.edit').forEach(b => b.addEventListener('click', () => editEntry(parseInt(b.dataset.id))));
+  list.querySelectorAll('.ico-btn.del').forEach(b  => b.addEventListener('click', () => deleteEntry(parseInt(b.dataset.id))));
+}
+
+function exportCSV() {
+  if (!entries.length) { toast('No data to export'); return; }
+  const hdr  = ['Entry Date','State','City','Competition','Period','Price'];
+  const rows = entries.map(e => [e.date, `"${e.state}"`, `"${e.city}"`, `"${e.competition}"`, e.period, e.price]);
+  const csv  = [hdr, ...rows].map(r => r.join(',')).join('\n');
+  const a    = document.createElement('a');
+  a.href     = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'competition_data_' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+  toast('CSV downloaded ✓');
+}
+
+/* ═══════════════════════════════════════════
+   ANALYTICS
+═══════════════════════════════════════════ */
+function swAnTab(id, el) {
+  document.querySelectorAll('.an-tab').forEach(t => t.classList.remove('on'));
+  el.classList.add('on');
+  document.querySelectorAll('.an-panel').forEach(p => p.classList.remove('on'));
+  document.getElementById('p-' + id).classList.add('on');
+}
+
+function renderAnalytics() {
+  const prices = entries.map(e => parseFloat(e.price));
+  const avg  = prices.length ? prices.reduce((a,b) => a+b, 0) / prices.length : 0;
+  const maxP = prices.length ? Math.max(...prices) : 0;
+  const minP = prices.length ? Math.min(...prices) : 0;
+  const maxE = entries.find(e => parseFloat(e.price) === maxP);
+  const minE = entries.find(e => parseFloat(e.price) === minP);
+  const ss   = new Set(entries.map(e => e.state));
+  document.getElementById('an-stats').innerHTML = `
+    <div class="an-card"><div class="an-card-lbl">Highest Price</div><div class="an-card-val" style="color:var(--red)">₹${maxP.toFixed(2)}</div><div class="an-card-sub" style="color:var(--red)">${maxE ? maxE.state : '—'}</div></div>
+    <div class="an-card"><div class="an-card-lbl">Lowest Price</div><div class="an-card-val" style="color:var(--green)">₹${minP.toFixed(2)}</div><div class="an-card-sub" style="color:var(--green)">${minE ? minE.state : '—'}</div></div>
+    <div class="an-card"><div class="an-card-lbl">Overall Avg</div><div class="an-card-val" style="color:var(--cyan)">₹${avg.toFixed(2)}</div></div>
+    <div class="an-card"><div class="an-card-lbl">Total Entries</div><div class="an-card-val">${entries.length}</div><div class="an-card-sub" style="color:var(--text3)">${ss.size} state${ss.size !== 1 ? 's' : ''}</div></div>`;
+  renderSummary(); renderBubble(); renderTrend(); renderHeat(); renderComps(); renderStates();
+}
+
+function renderSummary() {
+  const sorted = [...entries].sort((a,b) => new Date(b.date) - new Date(a.date));
+  const total  = sorted.reduce((s,e) => s + parseFloat(e.price), 0);
+  if (!sorted.length) { document.getElementById('p-summary').innerHTML = emptyH(); return; }
+  document.getElementById('p-summary').innerHTML = `
+    <div class="an-lbl">${sorted.length} records · newest first</div>
+    <div class="tbl-wrap">
+      <table class="sum-tbl">
+        <thead><tr>
+          <th style="width:20%">Date</th><th style="width:23%">State</th>
+          <th style="width:27%">Competition</th><th style="width:16%">Month</th>
+          <th class="r" style="width:14%">Price</th>
+        </tr></thead>
+        <tbody>${sorted.map(e => `<tr>
+          <td>${fmtShort(e.date)}</td>
+          <td style="color:var(--text2)">${e.state.length > 12 ? e.state.slice(0,11)+'…' : e.state}</td>
+          <td class="td-c">${e.competition}</td>
+          <td><span class="td-b">${e.period}</span></td>
+          <td class="td-p">₹${parseFloat(e.price).toFixed(2)}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+      <div class="tbl-foot"><span>${sorted.length} entries</span><span>Total: <strong>₹${total.toFixed(2)}</strong></span></div>
+    </div>`;
+}
+
+function renderBubble() {
+  const allComps  = [...new Set(entries.map(e => e.competition))].sort();
+  const allStates = [...new Set(entries.map(e => e.state))].sort();
+  document.getElementById('p-bubble').innerHTML = `
+    <div class="an-frow">
+      <select class="an-fsel" id="bf-comp" onchange="redrawBubble()"><option value="">All Competitions</option>${allComps.map(c=>`<option>${c}</option>`).join('')}</select>
+      <select class="an-fsel" id="bf-state" onchange="redrawBubble()"><option value="">All States</option>${allStates.map(s=>`<option>${s}</option>`).join('')}</select>
+    </div>
+    <div class="an-lbl">Bubble size = entries · colour = competition</div>
+    <div class="bub-canvas" id="bub-cv"></div>
+    <div id="bub-leg" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px"></div>`;
+  redrawBubble();
+}
+function redrawBubble() {
+  const cf = document.getElementById('bf-comp')?.value  || '';
+  const sf = document.getElementById('bf-state')?.value || '';
+  const data = entries.filter(e => (!cf || e.competition === cf) && (!sf || e.state === sf));
+  const groups = {};
+  data.forEach(e => {
+    const k = e.period || fmtMonth(e.date);
+    if (!groups[k]) groups[k] = { count:0, total:0, comps:{} };
+    groups[k].count++; groups[k].total += parseFloat(e.price);
+    groups[k].comps[e.competition] = (groups[k].comps[e.competition] || 0) + 1;
+  });
+  const vals = Object.entries(groups).sort((a,b) => a[0].localeCompare(b[0]));
+  const cv   = document.getElementById('bub-cv');
+  if (!cv) return;
+  if (!vals.length) { cv.innerHTML = '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px">No data for selected filters</div>'; return; }
+  const maxC     = Math.max(...vals.map(([,v]) => v.count));
+  const pos      = [[18,28],[52,20],[78,38],[35,62],[68,65],[20,70],[55,45],[82,22],[42,38],[72,50]];
+  const allComps = [...new Set(entries.map(e => e.competition))];
+  cv.innerHTML = vals.map(([k,v],i) => {
+    const sz  = 44 + (v.count / maxC) * 80;
+    const p   = pos[i % pos.length];
+    const tc  = Object.entries(v.comps).sort((a,b) => b[1]-a[1])[0][0];
+    const col = PAL[allComps.indexOf(tc) % PAL.length];
+    return `<div class="bubble" style="width:${sz}px;height:${sz}px;left:${p[0]}%;top:${p[1]}%;background:${col}"><div class="bubble-lbl">${k}</div><div class="bubble-sub">${v.count} · ₹${(v.total/v.count).toFixed(0)}</div></div>`;
+  }).join('');
+  const leg = document.getElementById('bub-leg');
+  if (leg) leg.innerHTML = allComps.map((c,i) => `<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)"><div style="width:9px;height:9px;border-radius:50%;background:${PAL[i%PAL.length]};flex-shrink:0"></div>${c}</div>`).join('');
+}
+
+function renderTrend() {
+  const byC  = {};
+  entries.forEach(e => { if (!byC[e.competition]) byC[e.competition] = {}; const p = e.period || fmtMonth(e.date); if (!byC[e.competition][p]) byC[e.competition][p] = []; byC[e.competition][p].push(parseFloat(e.price)); });
+  const allP = [...new Set(entries.map(e => e.period || fmtMonth(e.date)))].sort();
+  if (!allP.length) { document.getElementById('p-trend').innerHTML = emptyH(); return; }
+  let html = `<div class="an-lbl">Sparkline per competitor</div><div class="spark-wrap"><div class="spark-hd">${allP.join(' → ')}</div>`;
+  Object.keys(byC).forEach((comp, ci) => {
+    const vals  = allP.map(p => { const a = byC[comp][p]; return a ? a.reduce((x,y)=>x+y,0)/a.length : null; });
+    const valid = vals.filter(v => v !== null);
+    if (!valid.length) return;
+    const latest = valid[valid.length-1];
+    const minV = Math.min(...valid), maxV = Math.max(...valid), rng = maxV - minV || 1;
+    const pts  = vals.map((v,i) => { if (v===null) return null; const x = allP.length===1?50:(i/(allP.length-1))*100; const y = 90-((v-minV)/rng)*80; return `${x},${y}`; }).filter(Boolean).join(' ');
+    const dots = vals.map((v,i) => { if (v===null) return ''; const x = allP.length===1?50:(i/(allP.length-1))*100; const y = 90-((v-minV)/rng)*80; return `<circle cx="${x}" cy="${y}" r="4" fill="${PAL[ci%PAL.length]}"/>`; }).join('');
+    const col  = PAL[ci % PAL.length];
+    html += `<div class="spark-row"><span class="spark-lbl">${comp}</span><div class="spark-line"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${dots}</svg></div><span class="spark-val" style="color:${col}">₹${latest.toFixed(2)}</span></div>`;
+  });
+  html += '</div>';
+  const byP   = {};
+  entries.forEach(e => { const k = e.period||fmtMonth(e.date); if (!byP[k]) byP[k]={t:0,c:0}; byP[k].t+=parseFloat(e.price); byP[k].c++; });
+  const pers  = Object.entries(byP).sort((a,b) => a[0].localeCompare(b[0]));
+  const mxAvg = Math.max(...pers.map(([,v]) => v.t/v.c));
+  html += `<div class="an-lbl" style="margin-top:18px">Avg price by period</div><div class="bar-chart">`;
+  pers.forEach(([k,v]) => { const avg=v.t/v.c; html+=`<div class="bar-row"><span class="bar-lbl">${k}</span><div class="bar-track"><div class="bar-fill" style="width:${(avg/mxAvg*100).toFixed(0)}%;background:var(--cyan)"></div></div><span class="bar-val" style="color:var(--cyan)">₹${avg.toFixed(2)}</span></div>`; });
+  html += '</div>';
+  document.getElementById('p-trend').innerHTML = html;
+}
+
+function renderHeat() {
+  const sts  = [...new Set(entries.map(e => e.state))].sort();
+  const pers = [...new Set(entries.map(e => e.period||fmtMonth(e.date)))].sort();
+  if (!sts.length) { document.getElementById('p-heat').innerHTML = emptyH(); return; }
+  const grid = {};
+  entries.forEach(e => { const p=e.period||fmtMonth(e.date); if(!grid[e.state])grid[e.state]={}; if(!grid[e.state][p])grid[e.state][p]=[]; grid[e.state][p].push(parseFloat(e.price)); });
+  const allV = []; sts.forEach(s => pers.forEach(p => { if(grid[s]?.[p]) allV.push(...grid[s][p]); }));
+  const mn=Math.min(...allV), mx=Math.max(...allV), rng=mx-mn||1;
+  function hc(v){const t=(v-mn)/rng;return `rgb(${Math.round(t*255)},${Math.round(212-t*140)},${Math.round(200-t*200)})`;}
+  let html = `<div class="an-lbl">Price heat map · state × period</div><div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="border-collapse:collapse;width:100%">`;
+  html += `<tr><th style="text-align:left;padding:5px 8px;color:var(--text3);font-size:9px;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;min-width:90px">State</th>`;
+  pers.forEach(p => { html += `<th style="text-align:center;padding:5px 4px;color:var(--text3);font-size:9px;text-transform:uppercase;white-space:nowrap;min-width:52px">${p}</th>`; });
+  html += '</tr>';
+  sts.forEach(s => {
+    html += `<tr><td style="padding:4px 8px;color:var(--text2);font-size:11px;font-weight:500;white-space:nowrap">${s.length>14?s.slice(0,13)+'…':s}</td>`;
+    pers.forEach(p => {
+      const vals = grid[s]?.[p];
+      if (vals) { const avg=vals.reduce((a,b)=>a+b,0)/vals.length; html+=`<td style="padding:3px 2px;text-align:center"><div style="background:${hc(avg)};border-radius:5px;padding:5px 2px;font-family:'DM Mono',monospace;font-size:10px;font-weight:600;color:#000">₹${avg.toFixed(0)}</div></td>`; }
+      else html += `<td style="padding:3px 2px;text-align:center"><div style="background:var(--bg3);border-radius:5px;padding:5px 2px;font-size:10px;color:var(--text3)">—</div></td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</table></div>';
+  document.getElementById('p-heat').innerHTML = html;
+}
+
+function renderComps() {
+  const byC = {};
+  entries.forEach(e => { if(!byC[e.competition])byC[e.competition]={t:0,c:0,states:new Set()}; byC[e.competition].t+=parseFloat(e.price); byC[e.competition].c++; byC[e.competition].states.add(e.state); });
+  const comps = Object.entries(byC).sort((a,b) => (b[1].t/b[1].c)-(a[1].t/a[1].c));
+  if (!comps.length) { document.getElementById('p-comps').innerHTML = emptyH(); return; }
+  const mxA=Math.max(...comps.map(([,v])=>v.t/v.c)), mxC=Math.max(...comps.map(([,v])=>v.c));
+  let html=`<div class="an-lbl">Avg price by competitor</div><div class="bar-chart">`;
+  comps.forEach(([k,v],i)=>{const avg=v.t/v.c;const col=PAL[i%PAL.length];html+=`<div class="bar-row"><span class="bar-lbl">${k}</span><div class="bar-track"><div class="bar-fill" style="width:${(avg/mxA*100).toFixed(0)}%;background:${col}"></div></div><span class="bar-val" style="color:${col}">₹${avg.toFixed(2)}</span></div>`;});
+  html+=`</div><div class="an-lbl" style="margin-top:18px">Entry count by competitor</div><div class="bar-chart">`;
+  comps.forEach(([k,v],i)=>{const col=PAL[i%PAL.length];html+=`<div class="bar-row"><span class="bar-lbl">${k}</span><div class="bar-track"><div class="bar-fill" style="width:${(v.c/mxC*100).toFixed(0)}%;background:${col};opacity:.55"></div></div><span class="bar-val" style="color:${col}">${v.c}/${v.states.size}st</span></div>`;});
+  html+=`</div>`;
+  document.getElementById('p-comps').innerHTML = html;
+}
+
+function renderStates() {
+  const byS = {};
+  entries.forEach(e=>{if(!byS[e.state])byS[e.state]={t:0,c:0,mn:Infinity,mx:-Infinity};byS[e.state].t+=parseFloat(e.price);byS[e.state].c++;byS[e.state].mn=Math.min(byS[e.state].mn,parseFloat(e.price));byS[e.state].mx=Math.max(byS[e.state].mx,parseFloat(e.price));});
+  const sts=Object.entries(byS).sort((a,b)=>(b[1].t/b[1].c)-(a[1].t/a[1].c));
+  if(!sts.length){document.getElementById('p-states').innerHTML=emptyH();return;}
+  let html=`<div class="an-lbl">Price radar by state</div><div class="state-list">`;
+  sts.forEach(([k,v])=>{const avg=v.t/v.c;html+=`<div class="state-row"><div><div class="state-nm">${k}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">₹${v.mn.toFixed(2)} — ₹${v.mx.toFixed(2)}</div></div><div class="state-ri"><div class="state-avg">₹${avg.toFixed(2)}</div><div class="state-cnt">${v.c} entr${v.c===1?'y':'ies'}</div></div></div>`;});
+  html+=`</div>`;
+  document.getElementById('p-states').innerHTML=html;
+}
+
+/* ═══════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════ */
+function emptyH() { return `<div class="empty"><svg width="36" height="36" fill="none" stroke-width="1.4" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="12" y2="13"/></svg>No data yet</div>`; }
+function fmtDate(d)  { return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); }
+function fmtShort(d) { const dt=new Date(d+'T00:00:00');const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return `${dt.getDate()} ${m[dt.getMonth()]} ${String(dt.getFullYear()).slice(-2)}`; }
+function fmtMonth(d) { const dt=new Date(d+'T00:00:00');const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return `${m[dt.getMonth()]} ${String(dt.getFullYear()).slice(-2)}`; }
+let _tT;
+function toast(msg) { const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(_tT);_tT=setTimeout(()=>t.classList.remove('show'),2500); }
+
+/* ═══════════════════════════════════════════
+   SERVICE WORKER
+═══════════════════════════════════════════ */
+if ('serviceWorker' in navigator) {
+  // Unregister ALL old service workers first, then register fresh
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(r => r.unregister());
+    navigator.serviceWorker.register('sw.js');
+  });
+}
+
+/* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+document.getElementById('fab').addEventListener('click', () => { goTo('entry'); switchTab('add'); });
+initChipClears();
+buildMap();
+renderMap();
+updateStats();
+initForm();
+</script>
+</body>
+</html>
