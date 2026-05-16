@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CompTrack">
+<meta name="theme-color" content="#080d14">
+<title>Competition Tracker</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.svg">
+<link rel="icon" href="icon-192.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#080d14;--bg1:#0e1520;--bg2:#141d2b;--bg3:#1a2436;--bg4:#202e42;
+  --cyan:#00d4c8;--cdim:rgba(0,212,200,0.14);
+  --text:#e8edf5;--t2:#8a97ab;--t3:#4d5d70;
+  --bdr:rgba(255,255,255,0.06);--bdr2:rgba(255,255,255,0.11);
+  --red:#ff4d6d;--grn:#00c47a;--amb:#f5a623;
+  --r:16px;--rs:11px;--rx:8px;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+#app{height:100%;display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:relative;overflow:hidden}
+/* NAV */
+#nav{display:flex;background:var(--bg1);border-top:1px solid var(--bdr);padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px));z-index:100;flex-shrink:0}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0 4px;cursor:pointer;position:relative;user-select:none}
+.nb svg{width:22px;height:22px;stroke:var(--t3);stroke-width:1.6;fill:none;transition:stroke .2s}
+.nb span{font-size:11px;color:var(--t3);letter-spacing:.02em;font-weight:500;transition:color .2s}
+.nb.on svg{stroke:var(--cyan)}
+.nb.on span{color:var(--cyan)}
+.nb.on::after{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:28px;height:2px;background:var(--cyan);border-radius:0 0 3px 3px}
+/* SCREENS */
+#screens{flex:1;overflow:hidden;position:relative}
+.scr{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;opacity:0;pointer-events:none;transition:opacity .22s;-webkit-overflow-scrolling:touch}
+.scr.on{opacity:1;pointer-events:all}
+.scr::-webkit-scrollbar{display:none}
+/* HEADER */
+.ph{padding:calc(44px + env(safe-area-inset-top,0px)) 22px 14px;background:var(--bg);position:sticky;top:0;z-index:10}
+.pt{font-size:26px;font-weight:600;letter-spacing:-.03em}
+.ps{font-size:12px;color:var(--t3);margin-top:3px}
+/* FILTER BAR */
+.fbar{padding:0 22px 14px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.fbar::-webkit-scrollbar{display:none}
+.fchip{display:flex;align-items:center;gap:5px;padding:7px 13px;border-radius:20px;font-size:12px;font-weight:500;color:var(--t2);background:var(--bg2);border:1px solid var(--bdr);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .18s;user-select:none}
+.fchip svg{width:12px;height:12px;stroke:currentColor;stroke-width:2;fill:none;flex-shrink:0}
+.fchip.on{background:var(--cdim);border-color:rgba(0,212,200,.35);color:var(--cyan)}
+.xclear{display:none;width:16px;height:16px;border-radius:50%;background:rgba(0,212,200,.2);align-items:center;justify-content:center;font-size:10px;color:var(--cyan);flex-shrink:0}
+.fchip.on .xclear{display:flex}
+/* FILTER MODAL - pure CSS show/hide, no animation race */
+.fmodal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;align-items:flex-end;justify-content:center}
+.fmodal-overlay.on{display:flex}
+.fmodal{background:var(--bg2);border-radius:22px 22px 0 0;width:100%;max-width:480px;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));max-height:80vh;display:flex;flex-direction:column}
+.fmodal-handle{width:36px;height:4px;background:var(--bg4);border-radius:2px;margin:14px auto 16px;flex-shrink:0}
+.fmodal-title{font-size:15px;font-weight:600;padding:0 22px 14px;color:var(--text);border-bottom:1px solid var(--bdr);flex-shrink:0}
+.fmodal-body{padding:16px 22px;overflow-y:auto;flex:1}
+.fmodal-lbl{font-size:10px;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;font-weight:500}
+.fmodal-opts{display:flex;flex-wrap:wrap;gap:8px}
+.fopt{padding:8px 16px;border-radius:20px;font-size:13px;font-weight:500;color:var(--t2);background:var(--bg3);border:1px solid var(--bdr);cursor:pointer;transition:background .15s,border-color .15s,color .15s;user-select:none}
+.fopt.on{background:var(--cdim);border-color:rgba(0,212,200,.4);color:var(--cyan)}
+.fmodal-foot{display:flex;gap:10px;padding:14px 22px 0;border-top:1px solid var(--bdr);flex-shrink:0;margin-top:4px}
+.fbtn{flex:1;padding:13px;border-radius:var(--rs);font-size:14px;font-weight:600;cursor:pointer;border:none;font-family:inherit}
+.fbtn:active{opacity:.75}
+.fbtn.sec{background:var(--bg3);color:var(--t2)}
+.fbtn.pri{background:var(--cyan);color:#000}
+/* MAP STATS */
+.mstats{display:flex;gap:8px;padding:0 22px 14px}
+.spill{flex:1;background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--rs);padding:11px 10px;display:flex;flex-direction:column;gap:4px}
+.spill-l{font-size:9px;color:var(--t3);letter-spacing:.1em;font-weight:500;text-transform:uppercase}
+.spill-v{font-size:18px;font-weight:600;color:var(--text);letter-spacing:-.02em;font-family:'DM Mono',monospace}
+.spill-v.c{color:var(--cyan)}
+/* MAP */
+.mwrap{padding:0 12px 8px;position:relative}
+#india-map{width:100%;height:auto;display:block}
+.mhint{text-align:center;font-size:11px;color:var(--t3);padding:4px 0 10px}
+.mtip{position:absolute;z-index:50;background:var(--bg2);border:1px solid rgba(0,212,200,.35);border-radius:var(--rs);padding:12px 14px;min-width:190px;max-width:260px;pointer-events:none;opacity:0;transition:opacity .18s;bottom:24px;left:50%;transform:translateX(-50%)}
+.mtip.on{opacity:1}
+.mtip h4{font-size:12px;font-weight:600;color:var(--cyan);margin-bottom:8px}
+.trow{display:flex;justify-content:space-between;gap:12px;font-size:12px;margin-top:5px}
+.tnm{color:var(--t2)}
+.tv{color:var(--text);font-weight:500;font-family:'DM Mono',monospace}
+.tsep{margin-top:8px;padding-top:8px;border-top:1px solid var(--bdr)}
+/* FAB */
+.fab{position:absolute;bottom:20px;right:20px;width:50px;height:50px;background:var(--cyan);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 20px rgba(0,212,200,.25);transition:transform .18s;z-index:20}
+.fab:active{transform:scale(.88)}
+.fab svg{width:22px;height:22px;stroke:#000;stroke-width:2.2;fill:none;stroke-linecap:round}
+@keyframes mpp{0%{r:5;opacity:.6}100%{r:13;opacity:0}}
+.mpr{animation:mpp 1.8s ease-out infinite}
+/* ENTRY */
+.seg-wrap{padding:0 22px 14px}
+.seg{display:flex;background:var(--bg2);border:1px solid var(--bdr);border-radius:30px;padding:3px}
+.sbtn{flex:1;padding:8px;border-radius:26px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--t2);transition:all .2s;user-select:none}
+.sbtn.on{background:var(--cyan);color:#000}
+.eform{padding:0 22px}
+.field{margin-bottom:13px}
+.field label{display:block;font-size:10px;color:var(--t3);letter-spacing:.08em;font-weight:500;text-transform:uppercase;margin-bottom:6px}
+.field input,.field select{width:100%;background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--rx);padding:12px 14px;font-size:15px;color:var(--text);font-family:'DM Sans',system-ui,sans-serif;outline:none;transition:border-color .2s;appearance:none;-webkit-appearance:none}
+.field input:focus,.field select:focus{border-color:rgba(0,212,200,.5)}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238a97ab' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+.field input::placeholder{color:var(--t3)}
+.price-wrap{position:relative}
+.ppfx{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:15px;color:var(--cyan);font-family:'DM Mono',monospace;pointer-events:none}
+.price-wrap input{padding-left:28px}
+.frow{display:flex;gap:10px;margin-top:6px}
+.bsave{flex:1;padding:14px;background:var(--cyan);color:#000;border:none;border-radius:var(--rs);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .18s}
+.bsave:active{opacity:.8}
+.bcancel{padding:14px 18px;background:var(--bg3);color:var(--t2);border:1px solid var(--bdr);border-radius:var(--rs);font-size:14px;font-weight:500;cursor:pointer;font-family:inherit}
+/* RECORDS */
+.rhdr{display:flex;justify-content:space-between;align-items:center;padding:0 22px 12px}
+.rcnt{font-size:13px;color:var(--t3)}
+.bcsv{display:flex;align-items:center;gap:5px;background:var(--bg2);border:1px solid var(--bdr);color:var(--t2);padding:7px 13px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit}
+.bcsv svg{width:13px;height:13px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round}
+.rlist{padding:0 22px 100px}
+.rcard{background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--rs);padding:14px 16px;margin-bottom:10px;position:relative;overflow:hidden}
+.rcard::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--cyan)}
+.rtop{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px}
+.rcomp{font-size:15px;font-weight:600;color:var(--text)}
+.rprice{font-size:17px;font-weight:600;color:var(--cyan);font-family:'DM Mono',monospace}
+.rloc{font-size:12px;color:var(--t2);display:flex;align-items:center;gap:4px}
+.rloc svg{width:12px;height:12px;stroke:var(--t3);stroke-width:1.6;fill:none;flex-shrink:0}
+.rmeta{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.rdate{font-size:11px;color:var(--t3)}
+.rper{font-size:11px;background:var(--bg3);color:var(--t2);padding:2px 9px;border-radius:20px}
+.racts{display:flex;gap:6px;position:absolute;right:12px;bottom:12px}
+.ibt{width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t3);border-radius:6px}
+.ibt svg{width:14px;height:14px;stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round}
+/* ANALYTICS */
+.astats{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 22px 14px}
+.acard{background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--rs);padding:14px}
+.acard-l{font-size:9px;color:var(--t3);letter-spacing:.08em;font-weight:500;text-transform:uppercase;margin-bottom:6px}
+.acard-v{font-size:21px;font-weight:600;letter-spacing:-.02em;font-family:'DM Mono',monospace}
+.acard-s{font-size:11px;margin-top:3px;font-weight:500}
+.atabs{display:flex;gap:6px;padding:0 22px 14px;overflow-x:auto;scrollbar-width:none}
+.atabs::-webkit-scrollbar{display:none}
+.atab{padding:7px 13px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--bdr);color:var(--t2);white-space:nowrap;transition:all .2s;background:transparent;flex-shrink:0}
+.atab.on{background:var(--cyan);color:#000;border-color:var(--cyan)}
+.abody{padding:0 22px 100px}
+.apanel{display:none}
+.apanel.on{display:block}
+.albl{font-size:11px;color:var(--t3);margin-bottom:12px;letter-spacing:.03em}
+/* TABLE */
+.twrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--rs);border:1px solid var(--bdr)}
+.stbl{width:100%;border-collapse:collapse;min-width:400px}
+.stbl thead{background:var(--bg3)}
+.stbl th{padding:10px 12px;text-align:left;font-size:9px;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;font-weight:500;border-bottom:1px solid var(--bdr);white-space:nowrap}
+.stbl th.r{text-align:right}
+.stbl td{padding:10px 12px;border-bottom:1px solid var(--bdr);color:var(--t2);font-size:12px;white-space:nowrap}
+.stbl tr:last-child td{border-bottom:none}
+.tdc{color:var(--text);font-weight:500}
+.tdp{color:var(--cyan);font-family:'DM Mono',monospace;font-weight:500;text-align:right}
+.tdb{display:inline-block;background:var(--bg3);color:var(--t3);padding:2px 8px;border-radius:20px;font-size:10px}
+.tfoot{display:flex;justify-content:space-between;padding:10px 12px;background:var(--bg3);border-top:1px solid var(--bdr);font-size:11px}
+.tfoot span{color:var(--t3)}
+.tfoot strong{color:var(--cyan);font-family:'DM Mono',monospace;font-weight:500}
+/* BARS */
+.bchart{display:flex;flex-direction:column;gap:10px}
+.brow{display:flex;align-items:center;gap:10px}
+.blbl{font-size:11px;color:var(--t2);width:100px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btrack{flex:1;height:7px;background:var(--bg3);border-radius:4px;overflow:hidden}
+.bfill{height:100%;border-radius:4px;transition:width .5s ease}
+.bval{font-size:11px;font-family:'DM Mono',monospace;width:54px;text-align:right;flex-shrink:0}
+/* BUBBLE */
+.bubc{position:relative;height:240px;background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--r);overflow:hidden;margin-bottom:14px}
+.bub{position:absolute;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.bub-l{font-size:10px;font-weight:600;color:#000;line-height:1.3}
+.bub-s{font-size:9px;color:rgba(0,0,0,.55)}
+/* SPARKLINE */
+.spwrap{background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--rs);padding:14px;margin-bottom:14px}
+.sprow{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.splbl{font-size:11px;color:var(--t2);width:80px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spline{flex:1;height:28px}
+.spline svg{width:100%;height:100%}
+.spval{font-size:11px;font-family:'DM Mono',monospace;width:52px;text-align:right;flex-shrink:0}
+/* STATE RADAR */
+.slist{display:flex;flex-direction:column;gap:8px}
+.srow{background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--rs);padding:12px 14px;display:flex;justify-content:space-between;align-items:center}
+.snm{font-size:13px;font-weight:500;color:var(--text)}
+.sri{text-align:right}
+.savg{font-size:14px;font-weight:600;color:var(--cyan);font-family:'DM Mono',monospace}
+.scnt{font-size:10px;color:var(--t3);margin-top:2px}
+/* ANALYTICS FILTER ROW */
+.afrow{display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none}
+.afrow::-webkit-scrollbar{display:none}
+.afsel{background:var(--bg2);border:1px solid var(--bdr);border-radius:20px;padding:6px 12px;font-size:12px;color:var(--t2);font-family:inherit;outline:none;appearance:none;-webkit-appearance:none;cursor:pointer;flex-shrink:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238a97ab' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:26px}
+/* EMPTY */
+.empty{text-align:center;padding:48px 20px;color:var(--t3);font-size:14px;line-height:1.6}
+.empty svg{display:block;margin:0 auto 14px;stroke:var(--t3);opacity:.3}
+/* TOAST */
+#toast{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%) translateY(8px);background:var(--bg3);border:1px solid var(--cyan);color:var(--text);padding:10px 20px;border-radius:30px;font-size:13px;font-weight:500;z-index:999;opacity:0;transition:all .28s;pointer-events:none;white-space:nowrap}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+/* CONFIRM */
+.cbg{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:600;display:none;align-items:center;justify-content:center;padding:20px}
+.cbg.on{display:flex}
+.cbox{background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--r);padding:24px 22px;width:100%;max-width:300px;text-align:center}
+.ctit{font-size:16px;font-weight:600;margin-bottom:8px}
+.cmsg{font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.5}
+.cbtns{display:flex;gap:10px}
+.cbtn{flex:1;padding:12px;border-radius:var(--rs);font-size:14px;font-weight:600;cursor:pointer;border:none;font-family:inherit}
+.cbtn.cc{background:var(--bg3);color:var(--t2)}
+.cbtn.cd{background:var(--red);color:#fff}
+.bp{height:24px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="screens">
+
+    <!-- MAP -->
+    <div class="scr on" id="scr-map">
+      <div class="ph"><div class="pt">Coverage Map</div><div class="ps">Tap a state or pin for prices</div></div>
+      <div class="fbar">
+        <div class="fchip" id="chip-state">
+          <svg viewBox="0 0 24 24"><polygon points="3 6 21 6 14 14 14 20 10 20 10 14"/></svg>
+          <span id="chip-state-lbl">State</span>
+          <span class="xclear" id="chip-state-x">✕</span>
+        </div>
+        <div class="fchip" id="chip-comp">
+          <svg viewBox="0 0 24 24"><polygon points="3 6 21 6 14 14 14 20 10 20 10 14"/></svg>
+          <span id="chip-comp-lbl">Competition</span>
+          <span class="xclear" id="chip-comp-x">✕</span>
+        </div>
+        <div class="fchip" id="chip-month">
+          <svg viewBox="0 0 24 24"><polygon points="3 6 21 6 14 14 14 20 10 20 10 14"/></svg>
+          <span id="chip-month-lbl">Month</span>
+          <span class="xclear" id="chip-month-x">✕</span>
+        </div>
+      </div>
+      <div class="mstats">
+        <div class="spill"><span class="spill-l">Entries</span><span class="spill-v c" id="s-ent">0</span></div>
+        <div class="spill"><span class="spill-l">States</span><span class="spill-v" id="s-st">0</span></div>
+        <div class="spill"><span class="spill-l">Avg Price</span><span class="spill-v" id="s-avg">—</span></div>
+      </div>
+      <div class="mwrap">
+        <svg id="india-map" viewBox="0 0 550 620" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="mtip" id="mtip"></div>
+      </div>
+      <div class="mhint">Tap highlighted states for price details</div>
+      <div class="fab" id="fab">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </div>
+    </div>
+
+    <!-- ENTRY -->
+    <div class="scr" id="scr-entry">
+      <div class="ph"><div class="pt" id="etitle">Data Entry</div></div>
+      <div class="seg-wrap">
+        <div class="seg">
+          <div class="sbtn on" id="sb-add" onclick="swTab('add')">Add New</div>
+          <div class="sbtn" id="sb-rec" onclick="swTab('rec')">Records</div>
+        </div>
+      </div>
+      <div id="p-add">
+        <div class="eform">
+          <input type="hidden" id="f-eid">
+          <div class="field"><label>Date of Entry</label><input type="date" id="f-date"></div>
+          <div class="field"><label>State</label><select id="f-state"><option value="">Select a state</option></select></div>
+          <div class="field"><label>City</label><input type="text" id="f-city" placeholder="e.g. Mumbai" autocomplete="off"></div>
+          <div class="field"><label>Competition Name</label><input type="text" id="f-comp" placeholder="Competitor Brand" autocomplete="off"></div>
+          <div class="field"><label>Period (Month)</label><input type="text" id="f-period" placeholder="e.g. May 26" autocomplete="off"></div>
+          <div class="field"><label>Price (₹)</label>
+            <div class="price-wrap"><span class="ppfx">₹</span><input type="number" id="f-price" placeholder="0.00" step="0.01" min="0"></div>
+          </div>
+          <div class="frow">
+            <button class="bcancel" id="bcanel" style="display:none" onclick="cancelEdit()">Cancel</button>
+            <button class="bsave" id="bsave" onclick="saveEntry()">Save Entry</button>
+          </div>
+          <div class="bp"></div>
+        </div>
+      </div>
+      <div id="p-rec" style="display:none">
+        <div class="rhdr">
+          <span class="rcnt" id="rcnt">0 entries</span>
+          <button class="bcsv" onclick="exportCSV()">
+            <svg viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+            Export CSV
+          </button>
+        </div>
+        <div class="rlist" id="rlist"></div>
+      </div>
+    </div>
+
+    <!-- ANALYTICS -->
+    <div class="scr" id="scr-analytics">
+      <div class="ph"><div class="pt">Analytics</div></div>
+      <div class="astats" id="astats"></div>
+      <div class="atabs">
+        <div class="atab on"  onclick="swAnTab('sum',this)">Summary</div>
+        <div class="atab"     onclick="swAnTab('bub',this)">Bubble Map</div>
+        <div class="atab"     onclick="swAnTab('trd',this)">Price Trend</div>
+        <div class="atab"     onclick="swAnTab('heat',this)">Heat Map</div>
+        <div class="atab"     onclick="swAnTab('cmp',this)">Competitors</div>
+        <div class="atab"     onclick="swAnTab('sts',this)">State Radar</div>
+      </div>
+      <div class="abody">
+        <div class="apanel on" id="p-sum"></div>
+        <div class="apanel"    id="p-bub"></div>
+        <div class="apanel"    id="p-trd"></div>
+        <div class="apanel"    id="p-heat"></div>
+        <div class="apanel"    id="p-cmp"></div>
+        <div class="apanel"    id="p-sts"></div>
+      </div>
+    </div>
+
+  </div><!-- /screens -->
+
+  <nav id="nav">
+    <div class="nb on" id="nb-map" onclick="goTo('map')">
+      <svg viewBox="0 0 24 24"><path d="M12 21C12 21 4 14.5 4 9a8 8 0 0116 0c0 5.5-8 12-8 12z"/><circle cx="12" cy="9" r="2.5"/></svg><span>Map</span>
+    </div>
+    <div class="nb" id="nb-entry" onclick="goTo('entry')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span>Entry</span>
+    </div>
+    <div class="nb" id="nb-analytics" onclick="goTo('analytics')">
+      <svg viewBox="0 0 24 24"><rect x="3" y="14" width="4" height="7" rx="1"/><rect x="10" y="9" width="4" height="12" rx="1"/><rect x="17" y="4" width="4" height="17" rx="1"/></svg><span>Analytics</span>
+    </div>
+  </nav>
+</div>
+
+<!-- FILTER MODAL -->
+<div class="fmodal-overlay" id="foverlay">
+  <div class="fmodal" id="fmodal">
+    <div class="fmodal-handle"></div>
+    <div class="fmodal-title" id="fmodal-title">Filter</div>
+    <div class="fmodal-body" id="fmodal-body"></div>
+    <div class="fmodal-foot">
+      <button class="fbtn sec" id="fbtn-clear">Clear</button>
+      <button class="fbtn pri" id="fbtn-apply">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE -->
+<div class="cbg" id="cbg">
+  <div class="cbox">
+    <div class="ctit">Delete Entry?</div>
+    <div class="cmsg">This will be permanently removed.</div>
+    <div class="cbtns">
+      <button class="cbtn cc" onclick="closeConf()">Cancel</button>
+      <button class="cbtn cd" onclick="doDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+/* ── PALETTE ── */
+const PAL = ['#00d4c8','#f5a623','#00c47a','#ff4d6d','#a78bfa','#38bdf8','#fb923c','#34d399','#f472b6','#fbbf24'];
+
+/* ── STATE LIST ── */
+const STATES = ["Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Delhi","Jammu & Kashmir","Ladakh"];
+
+/* ── MAP CENTROIDS ── */
+const CTR = {"Andhra Pradesh":{x:295,y:415},"Arunachal Pradesh":{x:458,y:163},"Assam":{x:437,y:207},"Bihar":{x:318,y:252},"Chhattisgarh":{x:298,y:338},"Goa":{x:168,y:425},"Gujarat":{x:118,y:295},"Haryana":{x:218,y:188},"Himachal Pradesh":{x:235,y:130},"Jharkhand":{x:332,y:298},"Karnataka":{x:213,y:452},"Kerala":{x:210,y:530},"Madhya Pradesh":{x:232,y:315},"Maharashtra":{x:195,y:370},"Manipur":{x:468,y:252},"Meghalaya":{x:428,y:237},"Mizoram":{x:455,y:272},"Nagaland":{x:475,y:228},"Odisha":{x:345,y:358},"Punjab":{x:193,y:158},"Rajasthan":{x:168,y:255},"Sikkim":{x:388,y:212},"Tamil Nadu":{x:262,y:498},"Telangana":{x:272,y:390},"Tripura":{x:438,y:265},"Uttar Pradesh":{x:278,y:238},"Uttarakhand":{x:258,y:165},"West Bengal":{x:370,y:280},"Delhi":{x:233,y:202},"Jammu & Kashmir":{x:208,y:82},"Ladakh":{x:255,y:72}};
+
+/* ── SVG PATHS ── */
+const MPATHS = {"Jammu & Kashmir":"M160,60 L170,50 L190,45 L220,55 L240,60 L255,75 L260,95 L250,110 L230,115 L210,110 L190,100 L175,85 Z","Ladakh":"M240,60 L278,45 L308,50 L318,68 L298,88 L268,93 L255,88 L250,78 Z","Himachal Pradesh":"M210,110 L230,115 L250,110 L260,120 L255,135 L240,145 L220,140 L205,130 Z","Punjab":"M175,130 L205,130 L220,140 L215,165 L195,170 L175,160 L165,145 Z","Haryana":"M205,160 L215,165 L230,170 L235,195 L215,205 L200,200 L195,185 L200,170 Z","Delhi":"M228,195 L238,192 L241,206 L231,209 L225,202 Z","Uttarakhand":"M240,145 L265,140 L280,150 L275,175 L255,180 L235,175 L235,160 Z","Uttar Pradesh":"M235,175 L280,170 L330,180 L340,215 L320,240 L280,250 L245,245 L230,225 L225,205 L235,195 Z","Rajasthan":"M115,175 L165,165 L195,170 L200,200 L215,205 L225,225 L210,265 L180,285 L145,285 L115,265 L95,230 L100,200 Z","Bihar":"M280,215 L330,215 L345,235 L340,265 L315,275 L280,270 L265,250 L270,230 Z","Sikkim":"M380,195 L395,195 L400,210 L390,220 L378,215 Z","West Bengal":"M345,240 L380,235 L395,255 L385,300 L360,310 L340,295 L330,275 L335,255 Z","Arunachal Pradesh":"M420,145 L475,140 L495,160 L485,180 L455,185 L430,180 L415,165 Z","Nagaland":"M470,185 L490,185 L498,205 L482,218 L464,215 L460,200 Z","Assam":"M415,185 L455,185 L465,200 L460,225 L435,230 L410,225 L400,210 L408,195 Z","Meghalaya":"M410,228 L435,230 L440,245 L415,250 L400,240 Z","Manipur":"M462,220 L482,220 L488,240 L475,258 L458,255 L450,240 Z","Tripura":"M435,250 L450,248 L455,265 L440,272 L428,262 Z","Mizoram":"M450,258 L468,258 L472,275 L455,280 L443,270 Z","Jharkhand":"M315,275 L345,270 L360,290 L355,315 L330,320 L310,310 L305,290 Z","Odisha":"M330,325 L360,315 L380,335 L375,370 L345,385 L315,375 L305,350 L310,330 Z","Madhya Pradesh":"M145,285 L210,275 L245,280 L275,300 L280,335 L260,355 L225,360 L185,345 L155,320 L135,300 Z","Gujarat":"M95,255 L140,255 L155,270 L150,305 L130,320 L100,325 L75,305 L70,280 Z","Chhattisgarh":"M275,300 L320,300 L335,325 L330,360 L310,375 L280,370 L260,355 L265,320 Z","Maharashtra":"M130,325 L185,320 L225,330 L240,370 L230,400 L200,415 L160,410 L125,385 L115,355 L120,335 Z","Goa":"M155,415 L175,410 L180,428 L165,437 L155,428 Z","Telangana":"M240,360 L280,355 L310,370 L310,400 L285,420 L255,420 L230,405 L230,385 Z","Andhra Pradesh":"M255,390 L315,375 L350,395 L360,430 L330,455 L285,460 L250,445 L240,420 L248,400 Z","Karnataka":"M160,415 L200,415 L235,400 L255,420 L250,465 L235,490 L200,505 L165,495 L145,465 L145,440 Z","Kerala":"M195,505 L225,500 L240,520 L230,555 L205,568 L185,555 L180,530 Z","Tamil Nadu":"M235,465 L280,460 L310,475 L305,520 L270,548 L235,545 L210,520 L210,495 L230,480 Z"};
+
+/* ── DATA ── */
+const STORE = 'comptrack_v2';
+let entries = [];
+function loadData(){ try{ entries = JSON.parse(localStorage.getItem(STORE)||'[]'); }catch(e){ entries=[]; } }
+function saveData(){ localStorage.setItem(STORE, JSON.stringify(entries)); }
+loadData();
+
+/* ══════════════════════════════════════════════════
+   FILTER STATE  — plain object, mutable, no const
+══════════════════════════════════════════════════ */
+var activeFilters = { state: null, comp: null, month: null };
+
+function getFiltered() {
+  return entries.filter(function(e) {
+    if (activeFilters.state !== null && e.state       !== activeFilters.state) return false;
+    if (activeFilters.comp  !== null && e.competition !== activeFilters.comp)  return false;
+    if (activeFilters.month !== null && e.period      !== activeFilters.month) return false;
+    return true;
+  });
+}
+
+/* ── FILTER MODAL ── */
+var currentFilterType = null;   // which key we're editing
+var pendingValue      = null;   // what the user has tapped in the modal
+
+function openFilter(type) {
+  currentFilterType = type;
+  pendingValue      = activeFilters[type]; // pre-select current active filter
+
+  var titles = { state:'Filter by State', comp:'Filter by Competition', month:'Filter by Month' };
+
+  var opts = [];
+  if (type === 'state') opts = getUnique(entries.map(function(e){ return e.state; }));
+  if (type === 'comp')  opts = getUnique(entries.map(function(e){ return e.competition; }));
+  if (type === 'month') opts = getUnique(entries.map(function(e){ return e.period; }));
+
+  document.getElementById('fmodal-title').textContent = titles[type];
+
+  var body = document.getElementById('fmodal-body');
+  var html = '<div class="fmodal-lbl">Select one option</div><div class="fmodal-opts">';
+  html += '<div class="fopt' + (pendingValue === null ? ' on' : '') + '" data-val="__ALL__">All</div>';
+  opts.forEach(function(o) {
+    var safe = String(o).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    html += '<div class="fopt' + (pendingValue === o ? ' on' : '') + '" data-val="' + safe + '">' + safe + '</div>';
+  });
+  html += '</div>';
+  if (opts.length === 0) {
+    html += '<p style="color:var(--t3);font-size:13px;margin-top:8px">No data yet — add entries first.</p>';
+  }
+  body.innerHTML = html;
+
+  /* Attach click handlers using addEventListener — no inline JS, works for all values */
+  body.querySelectorAll('.fopt').forEach(function(el) {
+    el.addEventListener('click', function() {
+      pendingValue = (this.getAttribute('data-val') === '__ALL__') ? null : this.getAttribute('data-val');
+      body.querySelectorAll('.fopt').forEach(function(o){ o.classList.remove('on'); });
+      this.classList.add('on');
+    });
+  });
+
+  document.getElementById('foverlay').classList.add('on');
+}
+
+function closeFilter() {
+  document.getElementById('foverlay').classList.remove('on');
+}
+
+function applyFilter() {
+  if (currentFilterType !== null) {
+    activeFilters[currentFilterType] = pendingValue;
+  }
+  closeFilter();
+  refreshChips();
+  renderMap();
+  updateStats();
+}
+
+function clearFilterModal() {
+  pendingValue = null;
+  var body = document.getElementById('fmodal-body');
+  body.querySelectorAll('.fopt').forEach(function(o){ o.classList.remove('on'); });
+  var allPill = body.querySelector('.fopt[data-val="__ALL__"]');
+  if (allPill) allPill.classList.add('on');
+}
+
+function clearChip(type) {
+  activeFilters[type] = null;
+  refreshChips();
+  renderMap();
+  updateStats();
+}
+
+function refreshChips() {
+  var keys = ['state', 'comp', 'month'];
+  var defs = { state:'State', comp:'Competition', month:'Month' };
+  keys.forEach(function(k) {
+    var chip = document.getElementById('chip-' + k);
+    var lbl  = document.getElementById('chip-' + k + '-lbl');
+    var val  = activeFilters[k];
+    if (val !== null) {
+      chip.classList.add('on');
+      lbl.textContent = val.length > 16 ? val.slice(0,15) + '…' : val;
+    } else {
+      chip.classList.remove('on');
+      lbl.textContent = defs[k];
+    }
+  });
+}
+
+function getUnique(arr) {
+  var seen = {}, out = [];
+  arr.forEach(function(v){ if (v && !seen[v]){ seen[v]=1; out.push(v); } });
+  return out.sort();
+}
+
+/* ══════════════════════════════════════════════════
+   MAP
+══════════════════════════════════════════════════ */
+function buildMap() {
+  var svg = document.getElementById('india-map');
+  var h = '<defs></defs>';
+  Object.keys(MPATHS).forEach(function(name) {
+    var id = 'sp-' + name.replace(/[\s&]/g,'_');
+    var safe = name.replace(/"/g,'&quot;');
+    h += '<path id="' + id + '" d="' + MPATHS[name] + '" fill="#1a2436" stroke="#243040" stroke-width="0.8" data-state="' + safe + '" style="cursor:pointer;transition:fill .3s"/>';
+  });
+  svg.innerHTML = h;
+  svg.addEventListener('click', onMapClick);
+}
+
+function groupByState(data) {
+  var m = {};
+  data.forEach(function(e){ if(!m[e.state]) m[e.state]=[]; m[e.state].push(e); });
+  return m;
+}
+
+function renderMap() {
+  var data = getFiltered();
+  var sm   = groupByState(data);
+
+  document.querySelectorAll('#india-map path').forEach(function(p){ p.style.fill='#1a2436'; });
+  document.querySelectorAll('#india-map .pin').forEach(function(g){ g.remove(); });
+
+  var svg = document.getElementById('india-map');
+
+  Object.keys(sm).forEach(function(state) {
+    var rows = sm[state];
+    var el = document.getElementById('sp-' + state.replace(/[\s&]/g,'_'));
+    if (el) {
+      var alpha = Math.min(0.25 + (rows.length / 3) * 0.35, 0.65);
+      el.style.fill = 'rgba(0,212,200,' + alpha + ')';
+    }
+    var c = CTR[state];
+    if (!c) return;
+
+    var g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.classList.add('pin');
+    g.style.cursor = 'pointer';
+
+    var pulse = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    pulse.setAttribute('cx', c.x); pulse.setAttribute('cy', c.y);
+    pulse.setAttribute('r','5');   pulse.setAttribute('fill','rgba(0,212,200,0.25)');
+    pulse.classList.add('mpr');
+
+    var dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dot.setAttribute('cx', c.x);  dot.setAttribute('cy', c.y);
+    dot.setAttribute('r','5');     dot.setAttribute('fill','#00d4c8');
+    dot.setAttribute('stroke','rgba(255,255,255,0.9)'); dot.setAttribute('stroke-width','1.2');
+
+    g.appendChild(pulse); g.appendChild(dot);
+
+    /* Use IIFE to capture rows correctly in closure */
+    (function(st, rs) {
+      g.addEventListener('click', function(ev) {
+        ev.stopPropagation();
+        showTip(st, rs);
+      });
+    })(state, rows.slice());
+
+    svg.appendChild(g);
+  });
+}
+
+function onMapClick(e) {
+  var sn = e.target.getAttribute('data-state');
+  if (!sn) { hideTip(); return; }
+  var rows = groupByState(getFiltered())[sn];
+  if (rows && rows.length) {
+    showTip(sn, rows);
+  } else {
+    var tip = document.getElementById('mtip');
+    tip.innerHTML = '<h4>📍 ' + sn + '</h4><div style="font-size:12px;color:var(--t3);margin-top:4px">No entries match current filters</div>';
+    tip.classList.add('on');
+    clearTimeout(window._tipT);
+    window._tipT = setTimeout(hideTip, 2200);
+  }
+}
+
+function showTip(state, rows) {
+  var tip = document.getElementById('mtip');
+  var total = rows.reduce(function(s,r){ return s + parseFloat(r.price); }, 0);
+  var avg   = total / rows.length;
+  var byC   = {};
+  rows.forEach(function(r){ if(!byC[r.competition]) byC[r.competition]=[]; byC[r.competition].push(r); });
+  var h = '<h4>📍 ' + state + '</h4>';
+  Object.keys(byC).forEach(function(comp) {
+    var rs = byC[comp];
+    var a  = rs.reduce(function(s,r){ return s+parseFloat(r.price); },0) / rs.length;
+    h += '<div class="trow"><span class="tnm">' + comp + '</span><span class="tv">₹' + a.toFixed(2) + '</span></div>';
+  });
+  h += '<div class="trow tsep"><span class="tnm" style="color:var(--t3)">Avg · ' + rows.length + ' entr' + (rows.length===1?'y':'ies') + '</span><span class="tv" style="color:var(--cyan)">₹' + avg.toFixed(2) + '</span></div>';
+  tip.innerHTML = h;
+  tip.classList.add('on');
+  clearTimeout(window._tipT);
+  window._tipT = setTimeout(hideTip, 4500);
+}
+function hideTip() { document.getElementById('mtip').classList.remove('on'); }
+
+/* ── STATS ── */
+function updateStats() {
+  var data = getFiltered();
+  var ss   = {};
+  data.forEach(function(e){ ss[e.state]=1; });
+  var stCount = Object.keys(ss).length;
+  var avg = data.length ? data.reduce(function(s,e){ return s+parseFloat(e.price); },0) / data.length : 0;
+  document.getElementById('s-ent').textContent = data.length;
+  document.getElementById('s-st').textContent  = stCount;
+  document.getElementById('s-avg').textContent = data.length ? '₹'+avg.toFixed(2) : '—';
+}
+
+/* ── NAVIGATION ── */
+function goTo(id) {
+  document.querySelectorAll('.scr').forEach(function(s){ s.classList.remove('on'); });
+  document.querySelectorAll('.nb').forEach(function(b){ b.classList.remove('on'); });
+  document.getElementById('scr-'+id).classList.add('on');
+  document.getElementById('nb-'+id).classList.add('on');
+  if (id==='map')       { renderMap(); updateStats(); }
+  if (id==='analytics') renderAnalytics();
+  if (id==='entry' && document.getElementById('p-rec').style.display!=='none') renderRecords();
+}
+
+function swTab(t) {
+  document.getElementById('sb-add').classList.toggle('on', t==='add');
+  document.getElementById('sb-rec').classList.toggle('on',  t==='rec');
+  document.getElementById('p-add').style.display = t==='add' ? 'block' : 'none';
+  document.getElementById('p-rec').style.display = t==='rec' ? 'block' : 'none';
+  if (t==='rec') renderRecords();
+}
+
+/* ── FORM ── */
+function initForm() {
+  var sel = document.getElementById('f-state');
+  STATES.forEach(function(s){ var o=document.createElement('option'); o.value=o.textContent=s; sel.appendChild(o); });
+  document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+  var d=new Date(), mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('f-period').value = mo[d.getMonth()]+' '+String(d.getFullYear()).slice(2);
+}
+
+function saveEntry() {
+  var eid    = document.getElementById('f-eid').value;
+  var date   = document.getElementById('f-date').value;
+  var state  = document.getElementById('f-state').value;
+  var city   = document.getElementById('f-city').value.trim();
+  var comp   = document.getElementById('f-comp').value.trim();
+  var period = document.getElementById('f-period').value.trim();
+  var price  = parseFloat(document.getElementById('f-price').value);
+  if (!date||!state||!city||!comp||!period||!price||price<=0){ showToast('Please fill all fields'); return; }
+  if (eid) {
+    var idx = -1;
+    entries.forEach(function(e,i){ if(String(e.id)===eid) idx=i; });
+    if (idx>-1) entries[idx] = { id:entries[idx].id, date:date, state:state, city:city, competition:comp, period:period, price:price };
+    showToast('Entry updated ✓');
+  } else {
+    entries.push({ id:Date.now(), date:date, state:state, city:city, competition:comp, period:period, price:price });
+    showToast('Entry saved ✓');
+  }
+  saveData(); updateStats(); clearForm();
+}
+
+function clearForm() {
+  document.getElementById('f-eid').value   = '';
+  document.getElementById('f-city').value  = '';
+  document.getElementById('f-comp').value  = '';
+  document.getElementById('f-price').value = '';
+  document.getElementById('f-state').value = '';
+  document.getElementById('bcanel').style.display = 'none';
+  document.getElementById('bsave').textContent = 'Save Entry';
+  document.getElementById('etitle').textContent = 'Data Entry';
+  var d=new Date(), mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('f-period').value = mo[d.getMonth()]+' '+String(d.getFullYear()).slice(2);
+}
+
+function editEntry(id) {
+  var e = null;
+  entries.forEach(function(x){ if(x.id===id) e=x; });
+  if(!e) return;
+  swTab('add');
+  document.getElementById('f-eid').value    = e.id;
+  document.getElementById('f-date').value   = e.date;
+  document.getElementById('f-state').value  = e.state;
+  document.getElementById('f-city').value   = e.city;
+  document.getElementById('f-comp').value   = e.competition;
+  document.getElementById('f-period').value = e.period;
+  document.getElementById('f-price').value  = e.price;
+  document.getElementById('bcanel').style.display = 'block';
+  document.getElementById('bsave').textContent = 'Update Entry';
+  document.getElementById('etitle').textContent = 'Edit Entry';
+  document.getElementById('scr-entry').scrollTo({top:0,behavior:'smooth'});
+}
+function cancelEdit(){ clearForm(); }
+
+var delId = null;
+function deleteEntry(id){ delId=id; document.getElementById('cbg').classList.add('on'); }
+function closeConf(){ document.getElementById('cbg').classList.remove('on'); delId=null; }
+function doDelete(){
+  if(delId){ entries=entries.filter(function(e){ return e.id!==delId; }); saveData(); updateStats(); renderRecords(); showToast('Deleted'); }
+  closeConf();
+}
+
+function renderRecords() {
+  var list = document.getElementById('rlist');
+  var cnt  = document.getElementById('rcnt');
+  cnt.textContent = entries.length+' entr'+(entries.length===1?'y':'ies');
+  if(!entries.length){ list.innerHTML=emptyH(); return; }
+  var rev = entries.slice().reverse();
+  list.innerHTML = rev.map(function(e){
+    return '<div class="rcard">'
+      +'<div class="rtop"><span class="rcomp">'+e.competition+'</span><span class="rprice">₹'+parseFloat(e.price).toFixed(2)+'</span></div>'
+      +'<div class="rloc"><svg viewBox="0 0 24 24"><path d="M12 21C12 21 5 14 5 9a7 7 0 0114 0c0 5-7 12-7 12z"/><circle cx="12" cy="9" r="2"/></svg>'+e.city+', '+e.state+'</div>'
+      +'<div class="rmeta"><span class="rdate">'+fmtDate(e.date)+'</span><span class="rper">'+e.period+'</span></div>'
+      +'<div class="racts">'
+      +'<div class="ibt" data-edit="'+e.id+'"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>'
+      +'<div class="ibt" data-del="'+e.id+'"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></div>'
+      +'</div></div>';
+  }).join('');
+  list.querySelectorAll('.ibt[data-edit]').forEach(function(b){ b.addEventListener('click',function(){ editEntry(parseInt(b.dataset.edit)); }); });
+  list.querySelectorAll('.ibt[data-del]').forEach(function(b){  b.addEventListener('click',function(){ deleteEntry(parseInt(b.dataset.del)); }); });
+}
+
+function exportCSV() {
+  if(!entries.length){ showToast('No data to export'); return; }
+  var hdr  = ['Entry Date','State','City','Competition','Period','Price'];
+  var rows = entries.map(function(e){ return [e.date,'"'+e.state+'"','"'+e.city+'"','"'+e.competition+'"',e.period,e.price]; });
+  var csv  = [hdr].concat(rows).map(function(r){ return r.join(','); }).join('\n');
+  var a    = document.createElement('a');
+  a.href   = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download = 'competition_data_'+new Date().toISOString().split('T')[0]+'.csv';
+  a.click();
+  showToast('CSV downloaded ✓');
+}
+
+/* ── ANALYTICS ── */
+function swAnTab(id, el) {
+  document.querySelectorAll('.atab').forEach(function(t){ t.classList.remove('on'); });
+  el.classList.add('on');
+  document.querySelectorAll('.apanel').forEach(function(p){ p.classList.remove('on'); });
+  document.getElementById('p-'+id).classList.add('on');
+}
+
+function renderAnalytics() {
+  var prices = entries.map(function(e){ return parseFloat(e.price); });
+  var avg  = prices.length ? prices.reduce(function(a,b){ return a+b; },0)/prices.length : 0;
+  var maxP = prices.length ? Math.max.apply(null,prices) : 0;
+  var minP = prices.length ? Math.min.apply(null,prices) : 0;
+  var maxE = entries.filter(function(e){ return parseFloat(e.price)===maxP; })[0];
+  var minE = entries.filter(function(e){ return parseFloat(e.price)===minP; })[0];
+  var ss   = {}; entries.forEach(function(e){ ss[e.state]=1; });
+  var sc   = Object.keys(ss).length;
+  document.getElementById('astats').innerHTML =
+    '<div class="acard"><div class="acard-l">Highest Price</div><div class="acard-v" style="color:var(--red)">₹'+maxP.toFixed(2)+'</div><div class="acard-s" style="color:var(--red)">'+(maxE?maxE.state:'—')+'</div></div>'+
+    '<div class="acard"><div class="acard-l">Lowest Price</div><div class="acard-v" style="color:var(--grn)">₹'+minP.toFixed(2)+'</div><div class="acard-s" style="color:var(--grn)">'+(minE?minE.state:'—')+'</div></div>'+
+    '<div class="acard"><div class="acard-l">Overall Avg</div><div class="acard-v" style="color:var(--cyan)">₹'+avg.toFixed(2)+'</div></div>'+
+    '<div class="acard"><div class="acard-l">Total Entries</div><div class="acard-v">'+entries.length+'</div><div class="acard-s" style="color:var(--t3)">'+sc+' state'+(sc!==1?'s':'')+'</div></div>';
+  rSum(); rBub(); rTrd(); rHeat(); rCmp(); rSts();
+}
+
+function rSum() {
+  var sorted = entries.slice().sort(function(a,b){ return new Date(b.date)-new Date(a.date); });
+  var total  = sorted.reduce(function(s,e){ return s+parseFloat(e.price); },0);
+  if(!sorted.length){ document.getElementById('p-sum').innerHTML=emptyH(); return; }
+  document.getElementById('p-sum').innerHTML =
+    '<div class="albl">'+sorted.length+' records · newest first</div>'+
+    '<div class="twrap"><table class="stbl"><thead><tr>'+
+    '<th style="width:20%">Date</th><th style="width:23%">State</th><th style="width:27%">Competition</th><th style="width:16%">Month</th><th class="r" style="width:14%">Price</th>'+
+    '</tr></thead><tbody>'+
+    sorted.map(function(e){
+      return '<tr><td>'+fmtShort(e.date)+'</td><td style="color:var(--t2)">'+(e.state.length>12?e.state.slice(0,11)+'…':e.state)+'</td><td class="tdc">'+e.competition+'</td><td><span class="tdb">'+e.period+'</span></td><td class="tdp">₹'+parseFloat(e.price).toFixed(2)+'</td></tr>';
+    }).join('')+
+    '</tbody></table><div class="tfoot"><span>'+sorted.length+' entries</span><span>Total: <strong>₹'+total.toFixed(2)+'</strong></span></div></div>';
+}
+
+function rBub() {
+  var allC = getUnique(entries.map(function(e){ return e.competition; }));
+  var allS = getUnique(entries.map(function(e){ return e.state; }));
+  document.getElementById('p-bub').innerHTML =
+    '<div class="afrow">'+
+    '<select class="afsel" id="bf-c" onchange="drawBub()"><option value="">All Competitions</option>'+allC.map(function(c){ return '<option>'+c+'</option>'; }).join('')+'</select>'+
+    '<select class="afsel" id="bf-s" onchange="drawBub()"><option value="">All States</option>'+allS.map(function(s){ return '<option>'+s+'</option>'; }).join('')+'</select>'+
+    '</div><div class="albl">Bubble size = entries · colour = competition</div>'+
+    '<div class="bubc" id="bc"></div><div id="bleg" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px"></div>';
+  drawBub();
+}
+function drawBub() {
+  var cf   = (document.getElementById('bf-c')||{value:''}).value;
+  var sf   = (document.getElementById('bf-s')||{value:''}).value;
+  var data = entries.filter(function(e){ return (!cf||e.competition===cf)&&(!sf||e.state===sf); });
+  var grp  = {};
+  data.forEach(function(e){
+    var k=e.period||fmtMonth(e.date);
+    if(!grp[k]) grp[k]={n:0,t:0,comps:{}};
+    grp[k].n++; grp[k].t+=parseFloat(e.price);
+    grp[k].comps[e.competition]=(grp[k].comps[e.competition]||0)+1;
+  });
+  var vals=Object.keys(grp).sort().map(function(k){ return {k:k,v:grp[k]}; });
+  var cv=document.getElementById('bc'); if(!cv) return;
+  if(!vals.length){ cv.innerHTML='<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:13px">No data for selected filters</div>'; return; }
+  var mxN=Math.max.apply(null,vals.map(function(x){ return x.v.n; }));
+  var pos=[[18,28],[52,20],[78,38],[35,62],[68,65],[20,70],[55,45],[82,22],[42,38],[72,50]];
+  var allC=getUnique(entries.map(function(e){ return e.competition; }));
+  cv.innerHTML=vals.map(function(x,i){
+    var sz=44+(x.v.n/mxN)*80, p=pos[i%pos.length];
+    var tc=Object.keys(x.v.comps).sort(function(a,b){ return x.v.comps[b]-x.v.comps[a]; })[0];
+    var col=PAL[allC.indexOf(tc)%PAL.length];
+    return '<div class="bub" style="width:'+sz+'px;height:'+sz+'px;left:'+p[0]+'%;top:'+p[1]+'%;background:'+col+'"><div class="bub-l">'+x.k+'</div><div class="bub-s">'+x.v.n+' · ₹'+(x.v.t/x.v.n).toFixed(0)+'</div></div>';
+  }).join('');
+  var leg=document.getElementById('bleg');
+  if(leg) leg.innerHTML=allC.map(function(c,i){ return '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2)"><div style="width:9px;height:9px;border-radius:50%;background:'+PAL[i%PAL.length]+';flex-shrink:0"></div>'+c+'</div>'; }).join('');
+}
+
+function rTrd() {
+  var byC={};
+  entries.forEach(function(e){ if(!byC[e.competition]) byC[e.competition]={}; var p=e.period||fmtMonth(e.date); if(!byC[e.competition][p]) byC[e.competition][p]=[]; byC[e.competition][p].push(parseFloat(e.price)); });
+  var allP=getUnique(entries.map(function(e){ return e.period||fmtMonth(e.date); }));
+  if(!allP.length){ document.getElementById('p-trd').innerHTML=emptyH(); return; }
+  var html='<div class="albl">Sparkline per competitor</div><div class="spwrap"><div style="font-size:11px;color:var(--t3);margin-bottom:12px">'+allP.join(' → ')+'</div>';
+  Object.keys(byC).forEach(function(comp,ci){
+    var vals=allP.map(function(p){ var a=byC[comp][p]; return a?a.reduce(function(x,y){return x+y;},0)/a.length:null; });
+    var valid=vals.filter(function(v){ return v!==null; });
+    if(!valid.length) return;
+    var latest=valid[valid.length-1];
+    var mn=Math.min.apply(null,valid),mx=Math.max.apply(null,valid),rng=mx-mn||1;
+    var pts=vals.map(function(v,i){ if(v===null) return null; var x=allP.length===1?50:(i/(allP.length-1))*100; var y=90-((v-mn)/rng)*80; return x+','+y; }).filter(Boolean).join(' ');
+    var dots=vals.map(function(v,i){ if(v===null) return ''; var x=allP.length===1?50:(i/(allP.length-1))*100; var y=90-((v-mn)/rng)*80; return '<circle cx="'+x+'" cy="'+y+'" r="4" fill="'+PAL[ci%PAL.length]+'"/>'; }).join('');
+    var col=PAL[ci%PAL.length];
+    html+='<div class="sprow"><span class="splbl">'+comp+'</span><div class="spline"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><polyline points="'+pts+'" fill="none" stroke="'+col+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'+dots+'</svg></div><span class="spval" style="color:'+col+'">₹'+latest.toFixed(2)+'</span></div>';
+  });
+  html+='</div>';
+  var byP={};
+  entries.forEach(function(e){ var k=e.period||fmtMonth(e.date); if(!byP[k]) byP[k]={t:0,n:0}; byP[k].t+=parseFloat(e.price); byP[k].n++; });
+  var pers=Object.keys(byP).sort();
+  var mxA=Math.max.apply(null,pers.map(function(k){ return byP[k].t/byP[k].n; }));
+  html+='<div class="albl" style="margin-top:18px">Avg price by period</div><div class="bchart">';
+  pers.forEach(function(k){ var avg=byP[k].t/byP[k].n; html+='<div class="brow"><span class="blbl">'+k+'</span><div class="btrack"><div class="bfill" style="width:'+(avg/mxA*100).toFixed(0)+'%;background:var(--cyan)"></div></div><span class="bval" style="color:var(--cyan)">₹'+avg.toFixed(2)+'</span></div>'; });
+  html+='</div>';
+  document.getElementById('p-trd').innerHTML=html;
+}
+
+function rHeat() {
+  var sts=getUnique(entries.map(function(e){ return e.state; }));
+  var pers=getUnique(entries.map(function(e){ return e.period||fmtMonth(e.date); }));
+  if(!sts.length){ document.getElementById('p-heat').innerHTML=emptyH(); return; }
+  var grid={};
+  entries.forEach(function(e){ var p=e.period||fmtMonth(e.date); if(!grid[e.state]) grid[e.state]={}; if(!grid[e.state][p]) grid[e.state][p]=[]; grid[e.state][p].push(parseFloat(e.price)); });
+  var allV=[];
+  sts.forEach(function(s){ pers.forEach(function(p){ if(grid[s]&&grid[s][p]) allV=allV.concat(grid[s][p]); }); });
+  var mn=Math.min.apply(null,allV),mx=Math.max.apply(null,allV),rng=mx-mn||1;
+  function hc(v){ var t=(v-mn)/rng; return 'rgb('+Math.round(t*255)+','+Math.round(212-t*140)+','+Math.round(200-t*200)+')'; }
+  var html='<div class="albl">Price heat map · state × period</div><div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="border-collapse:collapse;width:100%">';
+  html+='<tr><th style="text-align:left;padding:5px 8px;color:var(--t3);font-size:9px;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;min-width:90px">State</th>';
+  pers.forEach(function(p){ html+='<th style="text-align:center;padding:5px 4px;color:var(--t3);font-size:9px;text-transform:uppercase;white-space:nowrap;min-width:52px">'+p+'</th>'; });
+  html+='</tr>';
+  sts.forEach(function(s){
+    html+='<tr><td style="padding:4px 8px;color:var(--t2);font-size:11px;font-weight:500;white-space:nowrap">'+(s.length>14?s.slice(0,13)+'…':s)+'</td>';
+    pers.forEach(function(p){
+      if(grid[s]&&grid[s][p]){ var avg=grid[s][p].reduce(function(a,b){return a+b;},0)/grid[s][p].length; html+='<td style="padding:3px 2px;text-align:center"><div style="background:'+hc(avg)+';border-radius:5px;padding:5px 2px;font-family:\'DM Mono\',monospace;font-size:10px;font-weight:600;color:#000">₹'+avg.toFixed(0)+'</div></td>'; }
+      else html+='<td style="padding:3px 2px;text-align:center"><div style="background:var(--bg3);border-radius:5px;padding:5px 2px;font-size:10px;color:var(--t3)">—</div></td>';
+    });
+    html+='</tr>';
+  });
+  html+='</table></div>';
+  document.getElementById('p-heat').innerHTML=html;
+}
+
+function rCmp() {
+  var byC={};
+  entries.forEach(function(e){ if(!byC[e.competition]) byC[e.competition]={t:0,n:0,sts:{}}; byC[e.competition].t+=parseFloat(e.price); byC[e.competition].n++; byC[e.competition].sts[e.state]=1; });
+  var comps=Object.keys(byC).sort(function(a,b){ return (byC[b].t/byC[b].n)-(byC[a].t/byC[a].n); });
+  if(!comps.length){ document.getElementById('p-cmp').innerHTML=emptyH(); return; }
+  var mxA=Math.max.apply(null,comps.map(function(k){ return byC[k].t/byC[k].n; }));
+  var mxN=Math.max.apply(null,comps.map(function(k){ return byC[k].n; }));
+  var html='<div class="albl">Avg price by competitor</div><div class="bchart">';
+  comps.forEach(function(k,i){ var avg=byC[k].t/byC[k].n,col=PAL[i%PAL.length]; html+='<div class="brow"><span class="blbl">'+k+'</span><div class="btrack"><div class="bfill" style="width:'+(avg/mxA*100).toFixed(0)+'%;background:'+col+'"></div></div><span class="bval" style="color:'+col+'">₹'+avg.toFixed(2)+'</span></div>'; });
+  html+='</div><div class="albl" style="margin-top:18px">Entry count</div><div class="bchart">';
+  comps.forEach(function(k,i){ var col=PAL[i%PAL.length]; html+='<div class="brow"><span class="blbl">'+k+'</span><div class="btrack"><div class="bfill" style="width:'+(byC[k].n/mxN*100).toFixed(0)+'%;background:'+col+';opacity:.55"></div></div><span class="bval" style="color:'+col+'">'+byC[k].n+'/'+Object.keys(byC[k].sts).length+'st</span></div>'; });
+  html+='</div>';
+  document.getElementById('p-cmp').innerHTML=html;
+}
+
+function rSts() {
+  var byS={};
+  entries.forEach(function(e){ if(!byS[e.state]) byS[e.state]={t:0,n:0,mn:Infinity,mx:-Infinity}; byS[e.state].t+=parseFloat(e.price); byS[e.state].n++; byS[e.state].mn=Math.min(byS[e.state].mn,parseFloat(e.price)); byS[e.state].mx=Math.max(byS[e.state].mx,parseFloat(e.price)); });
+  var sts=Object.keys(byS).sort(function(a,b){ return (byS[b].t/byS[b].n)-(byS[a].t/byS[a].n); });
+  if(!sts.length){ document.getElementById('p-sts').innerHTML=emptyH(); return; }
+  var html='<div class="albl">Price radar by state</div><div class="slist">';
+  sts.forEach(function(k){ var v=byS[k],avg=v.t/v.n; html+='<div class="srow"><div><div class="snm">'+k+'</div><div style="font-size:10px;color:var(--t3);margin-top:2px">₹'+v.mn.toFixed(2)+' — ₹'+v.mx.toFixed(2)+'</div></div><div class="sri"><div class="savg">₹'+avg.toFixed(2)+'</div><div class="scnt">'+v.n+' entr'+(v.n===1?'y':'ies')+'</div></div></div>'; });
+  html+='</div>';
+  document.getElementById('p-sts').innerHTML=html;
+}
+
+/* ── UTILS ── */
+function emptyH(){ return '<div class="empty"><svg width="36" height="36" fill="none" stroke-width="1.4" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="12" y2="13"/></svg>No data yet</div>'; }
+function fmtDate(d){ return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); }
+function fmtShort(d){ var dt=new Date(d+'T00:00:00'),m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return dt.getDate()+' '+m[dt.getMonth()]+' '+String(dt.getFullYear()).slice(-2); }
+function fmtMonth(d){ var dt=new Date(d+'T00:00:00'),m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return m[dt.getMonth()]+' '+String(dt.getFullYear()).slice(-2); }
+var _tT;
+function showToast(msg){ var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(_tT); _tT=setTimeout(function(){ t.classList.remove('on'); },2500); }
+
+/* ── SERVICE WORKER ── */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(function(regs){
+    regs.forEach(function(r){ r.unregister(); });
+    navigator.serviceWorker.register('sw.js');
+  });
+}
+
+/* ── INIT ── */
+document.getElementById('fab').addEventListener('click', function(){ goTo('entry'); swTab('add'); });
+
+/* Filter chip click handlers */
+document.getElementById('chip-state').addEventListener('click', function(){ openFilter('state'); });
+document.getElementById('chip-comp').addEventListener('click',  function(){ openFilter('comp'); });
+document.getElementById('chip-month').addEventListener('click', function(){ openFilter('month'); });
+
+/* Filter chip clear (✕) buttons */
+document.getElementById('chip-state-x').addEventListener('click', function(e){ e.stopPropagation(); clearChip('state'); });
+document.getElementById('chip-comp-x').addEventListener('click',  function(e){ e.stopPropagation(); clearChip('comp'); });
+document.getElementById('chip-month-x').addEventListener('click', function(e){ e.stopPropagation(); clearChip('month'); });
+
+/* Filter modal buttons */
+document.getElementById('fbtn-apply').addEventListener('click', applyFilter);
+document.getElementById('fbtn-clear').addEventListener('click', clearFilterModal);
+
+/* Close modal when tapping background (but NOT when tapping the modal itself) */
+document.getElementById('foverlay').addEventListener('click', function(e){
+  if (e.target === this) closeFilter();
+});
+
+buildMap();
+renderMap();
+updateStats();
+initForm();
+</script>
+</body>
+</html>
